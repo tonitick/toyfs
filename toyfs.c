@@ -1,13 +1,20 @@
 #define FUSE_USE_VERSION 30
 
-#define SIZE_IBMAP 32
-#define SIZE_DBMAP 32
-#define SIZE_PER_DATA_REGION 64
-#define SIZE_FILENAME 12
-#define ROOT_INUM 0
-#define NUM_DISK_PTRS_PER_INODE 4
-#define DATA_BLK_PTR_SIZE 4
-#define NUM_DATA_BLK_PTR_PER_BLK (SIZE_PER_DATA_REGION / DATA_BLK_PTR_SIZE)
+#define SIZE_IBMAP 32 // number of inode
+#define SIZE_DBMAP 512 // number of data blocks
+#define SIZE_PER_DATA_REGION 64 // size of data block
+#define SIZE_FILENAME 12 // size of filename
+#define ROOT_INUM 0 // root directory inode number
+#define NUM_DISK_PTRS_PER_INODE 4 // number of data block pointers per inode
+
+#define SIZE_DATA_BLK_PTR 4 // size of data block pointers
+
+#define NUM_PTR_PER_BLK (SIZE_PER_DATA_REGION / SIZE_DATA_BLK_PTR)
+#define NUM_FIRST_LEV_PTR_PER_INODE (NUM_DISK_PTRS_PER_INODE - 2)
+#define NUM_SECOND_LEV_PTR_PER_INODE NUM_PTR_PER_BLK
+#define NUM_THIRD_LEV_PTR_PER_INODE NUM_PTR_PER_BLK * NUM_PTR_PER_BLK
+#define NUM_FIRST_TWO_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE)
+#define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
 #include <fuse.h>
 #include <stdio.h>
@@ -29,20 +36,20 @@
 // int curr_file_content_idx = -1;
 
 struct SuperBlock {
-	unsigned int size_ibmap;
-	unsigned int size_dbmap;
-	unsigned int size_per_data_region;
-	unsigned int size_filename;
-	unsigned int root_inum;
-	unsigned int num_disk_ptrs_per_inode;
+    unsigned int size_ibmap;
+    unsigned int size_dbmap;
+    unsigned int size_per_data_region;
+    unsigned int size_filename;
+    unsigned int root_inum;
+    unsigned int num_disk_ptrs_per_inode;
 };
 struct SuperBlock superblock = {
-	.size_ibmap = SIZE_IBMAP,
-	.size_dbmap = SIZE_DBMAP,
-	.size_per_data_region = SIZE_PER_DATA_REGION,
-	.size_filename = SIZE_FILENAME,
-	.root_inum = ROOT_INUM,
-	.num_disk_ptrs_per_inode = NUM_DISK_PTRS_PER_INODE,
+    .size_ibmap = SIZE_IBMAP,
+    .size_dbmap = SIZE_DBMAP,
+    .size_per_data_region = SIZE_PER_DATA_REGION,
+    .size_filename = SIZE_FILENAME,
+    .root_inum = ROOT_INUM,
+    .num_disk_ptrs_per_inode = NUM_DISK_PTRS_PER_INODE,
 };
 
 // bool inode_bitmap[superblock.size_ibmap];
@@ -51,16 +58,16 @@ bool inode_bitmap[SIZE_IBMAP];
 bool data_bitmap[SIZE_DBMAP];
 
 struct INode {
-	unsigned int flag; // file type {0:REGULAR, 1:DIRECTORY, 2:SOFTLINK}
-	unsigned int blocks; // number of blocks used
-	unsigned int block[NUM_DISK_PTRS_PER_INODE]; // block pointers
-	unsigned int links_count; // number of hard links
-	unsigned int size; // file size in byte
+    int flag; // file type {0:REGULAR, 1:DIRECTORY, 2:SOFTLINK}
+    int blocks; // number of blocks used
+    int block[NUM_DISK_PTRS_PER_INODE]; // block pointers
+    int links_count; // number of hard links
+    int size; // file size in byte
 };
 struct INode inode_table[SIZE_IBMAP];
 
 struct DataBlock {
-	char space[SIZE_PER_DATA_REGION];
+    char space[SIZE_PER_DATA_REGION];
 };
 struct DataBlock data_regions[SIZE_DBMAP];
 
@@ -126,17 +133,51 @@ struct DataBlock data_regions[SIZE_DBMAP];
 // 
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
-	if(blk_idx < NUM_DISK_PTRS_PER_INODE -2) {
-        strncpy(buffer, data_regions[inode_table[ino_num].block[blk_idx]].space, SIZE_PER_DATA_REGION);
+    struct INode* inode = &inode_table[ino_num];
+    // direct pointer
+    if(blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
+        int data_reg_idx = inode->block[blk_idx];
+        char* first_level_block = data_regions[data_reg_idx].space;
+        
+        strncpy(buffer, first_level_block, SIZE_PER_DATA_REGION);
+
+        return SIZE_PER_DATA_REGION;
     }
-    else if (blk_idx >= NUM_DISK_PTRS_PER_INODE - 2 && blk_idx < NUM_DISK_PTRS_PER_INODE - 2 + NUM_DATA_BLK_PTR_PER_BLK) {
-        char indirect_ptrs_blk[SIZE_PER_DATA_REGION];
-        strncpy(buffer, data_regions[inode_table[ino_num].block[NUM_DISK_PTRS_PER_INODE - 2]].space, SIZE_PER_DATA_REGION);
+    // indirect pointer
+    else if (blk_idx >= NUM_FIRST_LEV_PTR_PER_INODE && blk_idx < NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
+        int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
+        char* first_level_block = data_regions[data_reg_idx].space;
+
+        int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
+        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        char* second_level_block = data_regions[data_reg_idx].space;
+        
+        strncpy(buffer, second_level_block, SIZE_PER_DATA_REGION);
+
+        return SIZE_PER_DATA_REGION;
     }
-    
+    // double indirect pointer
+    else if (blk_idx >= NUM_FIRST_TWO_LEV_PTR_PER_INODE && blk_idx < NUM_ALL_LEV_PTR_PER_INODE) {
+        int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
+        char* first_level_block = data_regions[data_reg_idx].space;
+
+        int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
+        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        char* second_level_block = data_regions[data_reg_idx].space;
+        
+        int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
+        data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
+        char* third_level_block = data_regions[data_reg_idx].space;
+
+        strncpy(buffer, third_level_block, SIZE_PER_DATA_REGION);
+
+        return SIZE_PER_DATA_REGION;
+    }
+    else return -1;
 }
-int find_dir_entry_ino(int dir_ino, const char* name) {
-    if (inode_table[dir_ino].flag != 1) return -ENOTDIR;
+
+int find_dir_entry_ino(int ino_num, const char* name) {
+    if (inode_table[ino_num].flag != 1) return -ENOTDIR;
 	return 0;
 }
 

@@ -1,3 +1,9 @@
+/* Reference
+    [1] fuse getattr: https://libfuse.github.io/doxygen/structfuse__operations.html#a60144dbd1a893008d9112e949300eb77
+    [2] stat struct: http://man7.org/linux/man-pages/man2/stat.2.html
+    [3] inode struct: http://books.gigatux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html
+    [4] <sys/types.h> header: http://www.doc.ic.ac.uk/~svb/oslab/Minix/usr/include/sys/types.h
+*/
 #define FUSE_USE_VERSION 30
 
 #define SIZE_IBMAP 32 // number of inode
@@ -135,7 +141,7 @@ struct DataBlock data_regions[SIZE_DBMAP];
 int read_block(int ino_num, int blk_idx, char* buffer) {
     struct INode* inode = &inode_table[ino_num];
     // direct pointer
-    if(blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
+    if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
         int data_reg_idx = inode->block[blk_idx];
         char* first_level_block = data_regions[data_reg_idx].space;
         
@@ -176,8 +182,46 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
     else return -1;
 }
 
+int assign_block(int ino_num, int blk_idx) {
+    // struct INode* inode = &inode_table[ino_num];
+    // int 
+    // if (blk_idx)
+    return 0;
+}
+
+int reclaim_block(int ino_num, int blk_idx) {
+    return 0;
+}
+
+int read_(int ino_num, char *buffer, size_t size, off_t offset) {
+    int read_size = 0;
+    int cur_offset = offset;
+    int file_size = inode_table[ino_num].size;
+    char blk_buff[SIZE_PER_DATA_REGION];
+    while (cur_offset >= 0 && cur_offset < file_size && read_size < size) {
+        int blk_idx = cur_offset / SIZE_PER_DATA_REGION;
+        int blk_offset = cur_offset % SIZE_PER_DATA_REGION;
+        int read_bytes = read_block(ino_num, blk_idx, blk_buff);
+        if (read_bytes != SIZE_PER_DATA_REGION) return -1;
+        // increment = min (read_bytes - blk_offset, file_size - cur_offset, size - read_size)
+        int increment = (read_bytes - blk_offset < file_size - cur_offset) ? read_bytes - blk_offset : file_size - cur_offset;
+        increment = (increment < size -  read_size) ? increment : size - read_size;
+        strncpy(buffer + read_size, blk_buff + blk_offset, increment);
+        cur_offset += increment;
+        read_size += increment;
+    }
+    
+    return read_size;
+}
+
+int write_(int ino_num, char *buffer, size_t size, off_t offset) {
+    return 0;
+}
+
 int find_dir_entry_ino(int ino_num, const char* name) {
     if (inode_table[ino_num].flag != 1) return -ENOTDIR;
+    
+
 	return 0;
 }
 
@@ -203,12 +247,6 @@ int get_inode_number(const char *path) {
 }
 
 static int do_getattr(const char *path, struct stat *st) {
-    /* Reference
-       [1] fuse getattr: https://libfuse.github.io/doxygen/structfuse__operations.html#a60144dbd1a893008d9112e949300eb77
-       [2] stat struct: http://man7.org/linux/man-pages/man2/stat.2.html
-       [3] inode struct: http://books.gigatux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html
-       [4] <sys/types.h> header: http://www.doc.ic.ac.uk/~svb/oslab/Minix/usr/include/sys/types.h
-    */
     printf("readdir input path: %s\n", path);
     int inn = get_inode_number(path);
     if (inn < 0 ) 
@@ -258,28 +296,16 @@ static int do_readdir( const char *path, void *buffer, fuse_fill_dir_t filler, o
     return 0;
 }
 
-// static int do_read( const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi )
-// {
-// 	int file_idx = get_file_index( path );
-// 	
-// 	if ( file_idx == -1 )
-// 		return -1;
-// 	
-// 	char *content = files_content[ file_idx ];
-// 	
-// 	memcpy( buffer, content + offset, size );
-// 		
-// 	return strlen( content ) - offset;
-// }
-// 
-// static int do_mkdir( const char *path, mode_t mode )
-// {
-// 	path++;
-// 	add_dir( path );
-// 	
-// 	return 0;
-// }
-// 
+static int do_read( const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi ) {
+    return 0;
+}
+
+static int do_mkdir( const char *path, mode_t mode )
+{
+	
+	return 0;
+}
+
 // static int do_mknod( const char *path, mode_t mode, dev_t rdev )
 // {
 // 	path++;

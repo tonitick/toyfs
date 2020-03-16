@@ -140,8 +140,9 @@ struct DataBlock data_regions[SIZE_DBMAP];
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
     struct INode* inode = &inode_table[ino_num];
-    // direct pointer
+    // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
+        // first level block
         int data_reg_idx = inode->block[blk_idx];
         char* first_level_block = data_regions[data_reg_idx].space;
         
@@ -149,11 +150,13 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 
         return SIZE_PER_DATA_REGION;
     }
-    // indirect pointer
+    // indirect
     else if (blk_idx >= NUM_FIRST_LEV_PTR_PER_INODE && blk_idx < NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
+        // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
         char* first_level_block = data_regions[data_reg_idx].space;
 
+        // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
@@ -162,15 +165,18 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 
         return SIZE_PER_DATA_REGION;
     }
-    // double indirect pointer
+    // double indirect
     else if (blk_idx >= NUM_FIRST_TWO_LEV_PTR_PER_INODE && blk_idx < NUM_ALL_LEV_PTR_PER_INODE) {
+        // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
         char* first_level_block = data_regions[data_reg_idx].space;
 
+        // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
-        
+
+        // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
         char* third_level_block = data_regions[data_reg_idx].space;
@@ -182,14 +188,88 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
     else return -1;
 }
 
+int get_new_block() {
+    for (int i = 0; i < SIZE_DBMAP; i++) {
+        if (data_bitmap[i] == 0) {
+            data_bitmap[i] = 1;
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
 int assign_block(int ino_num, int blk_idx) {
-    // struct INode* inode = &inode_table[ino_num];
-    // int 
-    // if (blk_idx)
+    struct INode* inode = &inode_table[ino_num];
+    int num_blocks = inode->blocks;
+    if (blk_idx != num_blocks) return -1;
+    // direct
+    if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
+        // first level pointer
+        int data_reg_idx = get_new_block();
+        if (data_reg_idx < 0) return -1;
+        inode->block[blk_idx] = data_reg_idx;
+    }
+    // indirect
+    else if (blk_idx >= NUM_FIRST_LEV_PTR_PER_INODE && blk_idx < NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
+        // first level pointer
+        int data_reg_idx = -1;
+        if (blk_idx == NUM_FIRST_LEV_PTR_PER_INODE) {
+            data_reg_idx = get_new_block();
+            if (data_reg_idx < 0) return -1;
+            inode->block[blk_idx] = data_reg_idx;
+        }
+        else {
+            data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
+        }
+
+        // second level pointer
+        char* first_level_block = data_regions[data_reg_idx].space;
+        int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
+        data_reg_idx = get_new_block();
+        if (data_reg_idx < 0) return -1;
+        strncpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+    }
+    // double indirect
+    else if (blk_idx >= NUM_FIRST_TWO_LEV_PTR_PER_INODE && blk_idx < NUM_ALL_LEV_PTR_PER_INODE) {
+        // first level pointer
+        int data_reg_idx = -1;
+        if (blk_idx == NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
+            data_reg_idx = get_new_block();
+            if (data_reg_idx < 0) return -1;
+            inode->block[blk_idx] = data_reg_idx;
+        }
+        else {
+            data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
+        }
+
+        // second level pointer
+        char* first_level_block = data_regions[data_reg_idx].space;
+        int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
+        int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
+        if (second_level_offset == 0) {
+            data_reg_idx = get_new_block();
+            if (data_reg_idx < 0) return -1;
+            strncpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+        }
+        else {
+            data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        }
+
+        // third level pointer
+        char* second_level_block = data_regions[data_reg_idx].space;
+        data_reg_idx = get_new_block();
+        if (data_reg_idx < 0) return -1;
+        strncpy(second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+    }
+
+    inode->blocks = num_blocks + 1;
+    
     return 0;
 }
 
 int reclaim_block(int ino_num, int blk_idx) {
+
     return 0;
 }
 
@@ -215,6 +295,7 @@ int read_(int ino_num, char *buffer, size_t size, off_t offset) {
 }
 
 int write_(int ino_num, char *buffer, size_t size, off_t offset) {
+    
     return 0;
 }
 
@@ -300,10 +381,8 @@ static int do_read( const char *path, char *buffer, size_t size, off_t offset, s
     return 0;
 }
 
-static int do_mkdir( const char *path, mode_t mode )
-{
-	
-	return 0;
+static int do_mkdir( const char *path, mode_t mode ) {
+    return 0;
 }
 
 // static int do_mknod( const char *path, mode_t mode, dev_t rdev )
@@ -332,7 +411,12 @@ static struct fuse_operations operations = {
 
 int main( int argc, char *argv[] )
 {
-	return fuse_main( argc, argv, &operations, NULL );
-	// return 0;
+    // initialize meta data
+
+
+
+
+    // return fuse_main(argc, argv, &operations, NULL);
+	return 0;
 }
 

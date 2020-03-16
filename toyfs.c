@@ -60,7 +60,7 @@ struct INode {
 struct INode inode_table[SIZE_IBMAP];
 
 struct DataBlock {
-	unsigned char space[SIZE_PER_DATA_REGION];
+	char space[SIZE_PER_DATA_REGION];
 };
 struct DataBlock data_regions[SIZE_DBMAP];
 
@@ -127,12 +127,11 @@ struct DataBlock data_regions[SIZE_DBMAP];
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
 	if(blk_idx < NUM_DISK_PTRS_PER_INODE -2) {
-        strncpy(buffer, data_regions[inode_table[dir_ino].block[blk_idx]], SIZE_PER_DATA_REGION);
+        strncpy(buffer, data_regions[inode_table[ino_num].block[blk_idx]].space, SIZE_PER_DATA_REGION);
     }
     else if (blk_idx >= NUM_DISK_PTRS_PER_INODE - 2 && blk_idx < NUM_DISK_PTRS_PER_INODE - 2 + NUM_DATA_BLK_PTR_PER_BLK) {
         char indirect_ptrs_blk[SIZE_PER_DATA_REGION];
-        strncpy(buffer, data_regions[inode_table[dir_ino].block[NUM_DISK_PTRS_PER_INODE - 2]], SIZE_PER_DATA_REGION);
-        int 
+        strncpy(buffer, data_regions[inode_table[ino_num].block[NUM_DISK_PTRS_PER_INODE - 2]].space, SIZE_PER_DATA_REGION);
     }
     
 }

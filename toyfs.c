@@ -584,8 +584,6 @@ static struct fuse_operations operations = {
     .mknod		= do_mknod,
 };
 
-bool inode_bitmap[SIZE_IBMAP];
-bool data_bitmap[SIZE_DBMAP];
 int main( int argc, char* argv[] ) {
     // initialize meta data
     for (int i = 0; i < SIZE_IBMAP; i++) inode_bitmap[i] = 0;

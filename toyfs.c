@@ -300,11 +300,13 @@ int reclaim_block(int ino_num, int blk_idx) {
 }
 
 int read_(int ino_num, char* buffer, size_t size, off_t offset) {
+    if (offset < 0 || size < 0) return -1;
+    if (offset + size == 0) return 0;
     int read_size = 0;
     int cur_offset = offset;
     int file_size = inode_table[ino_num].size;
     char blk_buff[SIZE_PER_DATA_REGION];
-    while (cur_offset >= 0 && cur_offset < file_size && read_size < size) {
+    while (cur_offset < file_size && read_size < size) {
         int blk_idx = cur_offset / SIZE_PER_DATA_REGION;
         int blk_offset = cur_offset % SIZE_PER_DATA_REGION;
         int read_bytes = read_block(ino_num, blk_idx, blk_buff);
@@ -323,7 +325,9 @@ int read_(int ino_num, char* buffer, size_t size, off_t offset) {
 int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
     // add blocks
     int cur_block_num = inode_table[ino_num].blocks;
-    int end_block_num = (offset + size) / SIZE_PER_DATA_REGION + 1;
+    if (offset < 0 || size < 0) return -1;
+    if (offset + size == 0) return 0;
+    int end_block_num = (offset + size - 1) / SIZE_PER_DATA_REGION + 1;
     for (int i = cur_block_num; i < end_block_num; i++) {
         if (assign_block(ino_num, i) < 0) return -1;
     }
@@ -423,7 +427,7 @@ static int do_getattr(const char* path, struct stat* st) {
     struct INode* inode = &inode_table[ino_num];
     
     // st_dev is ignored [1]
-    // st_ino is ignored [1]
+    st->st_ino = ino_num; // set to inode number inside the file system [1]
     st->st_nlink = inode->links_count;
     st->st_uid = getuid(); // currently no owner user id info in inode, set to user who mounts the fs
     st->st_gid = getgid(); // currently no owner group id info in inode, set to user group who mounts the fs
@@ -432,8 +436,8 @@ static int do_getattr(const char* path, struct stat* st) {
     st->st_mtime = time(NULL); // currently no last modify time info in inode, set to current time
     st->st_ctime = time(NULL); // currently no last change time info in inode, set to current time
     // st_blksize is ignored
-    st->st_blocks = inode->blocks;
-    st->st_size = inode->size;
+    st->st_blocks = inode->blocks; // set to number of data blocks assigned, slightly different from [2] 
+    st->st_size = inode->size; // [2]
     
     if (inode->flag == 0) {
         st->st_mode = S_IFREG | 0644; // currently no mode info in inode, set to 644 for regular

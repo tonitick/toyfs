@@ -295,7 +295,7 @@ int assign_block(int ino_num, int blk_idx) {
     }
     // file too large
     if (blk_idx >= NUM_ALL_LEV_PTR_PER_INODE) {
-        return -EFBIG; // file too large
+        return -EFBIG; // file too large [4]
     }
 
     return -1;
@@ -365,7 +365,7 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
 
 int find_dir_entry_ino(int ino_num, const char* name) {
     struct INode* inode = &inode_table[ino_num];
-    if (inode->flag != 1) return -ENOTDIR; // not a directory
+    if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
     
     int file_size = inode->size;
     char* buffer = (char*) malloc(file_size);
@@ -386,7 +386,7 @@ int find_dir_entry_ino(int ino_num, const char* name) {
     }
 
     free(buffer);
-    return -ENOENT; // no such file or directory
+    return -ENOENT; // no such file or directory [4]
 }
 
 int get_inode_number(const char* path) {
@@ -446,7 +446,7 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
     if (ino_num < 0) return ino_num;
     
     struct INode* inode = &inode_table[ino_num];
-    if (inode->flag != 1) return -ENOTDIR; // not a directory
+    if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
 
 	filler(res_buf, ".", NULL, 0); // current Directory
 	filler(res_buf, "..", NULL, 0); // parent Directory
@@ -491,10 +491,10 @@ static int do_mkdir(const char* path, mode_t mode) {
 
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
-    if (pos < 0) return -ENOENT; // no such file or directory
+    if (pos < 0) return -ENOENT; // no such file or directory [4]
     int file_name_len = plen - 1 - pos;
-    if (file_name_len < 0) return -ENOENT; // no such file or directory
-    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long
+    if (file_name_len < 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
     char file_name[SIZE_FILENAME + 1];
     memset(file_name, 0, SIZE_FILENAME + 1);
     memcpy(file_name, path + pos + 1, file_name_len);
@@ -507,7 +507,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
-    if (file_ino_num >= 0) return -EEXIST; // file exists
+    if (file_ino_num >= 0) return -EEXIST; // file exists [4]
 
     // file info
     file_ino_num = get_new_inode();
@@ -537,10 +537,10 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
 
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
-    if (pos < 0) return -ENOENT; // no such file or directory
+    if (pos < 0) return -ENOENT; // no such file or directory [4]
     int file_name_len = plen - 1 - pos;
-    if (file_name_len < 0) return -ENOENT; // no such file or directory
-    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long
+    if (file_name_len < 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
     char file_name[SIZE_FILENAME + 1];
     memset(file_name, 0, SIZE_FILENAME + 1);
     memcpy(file_name, path + pos + 1, file_name_len);
@@ -553,7 +553,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
-    if (file_ino_num >= 0) return -EEXIST; // file exists
+    if (file_ino_num >= 0) return -EEXIST; // file exists [4]
 
     // file info
     file_ino_num = get_new_inode();

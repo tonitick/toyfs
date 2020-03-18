@@ -79,7 +79,6 @@ struct DataBlock {
 struct DataBlock data_regions[SIZE_DBMAP];
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
-    printf("[DBUG INFO] read_block: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
@@ -215,7 +214,6 @@ int get_new_inode() {
 }
 
 int assign_block(int ino_num, int blk_idx) {
-    printf("[DBUG INFO] assign_block: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
     struct INode* inode = &inode_table[ino_num];
     int num_blocks = inode->blocks;
     if (blk_idx != num_blocks) return -1;
@@ -296,7 +294,7 @@ int assign_block(int ino_num, int blk_idx) {
         return 0;
     }
     // file too large
-    if (blk_idx >= ) {
+    if (blk_idx >= NUM_ALL_LEV_PTR_PER_INODE) {
         return -EFBIG; // file too large
     }
 
@@ -338,7 +336,8 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
     if (offset + size == 0) return 0;
     int end_block_num = (offset + size - 1) / SIZE_PER_DATA_REGION + 1;
     for (int i = cur_block_num; i < end_block_num; i++) {
-        if (assign_block(ino_num, i) < 0) return -1;
+        int result = assign_block(ino_num, i);
+        if (result < 0) return result;
     }
     
     int write_size = 0;
@@ -584,6 +583,7 @@ static struct fuse_operations operations = {
     .mkdir		= do_mkdir,
     .mknod		= do_mknod,
 };
+
 bool inode_bitmap[SIZE_IBMAP];
 bool data_bitmap[SIZE_DBMAP];
 int main( int argc, char* argv[] ) {

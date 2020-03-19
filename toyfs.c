@@ -452,7 +452,7 @@ static int do_getattr(const char* path, struct stat* st) {
 }
 
 static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi) {
-	printf("[DBUG INFO] readdir: path = %s\n", path);
+    printf("[DBUG INFO] readdir: path = %s\n", path);
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
@@ -460,8 +460,8 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
 
-	filler(res_buf, ".", NULL, 0); // current Directory
-	filler(res_buf, "..", NULL, 0); // parent Directory
+    filler(res_buf, ".", NULL, 0); // current Directory
+    filler(res_buf, "..", NULL, 0); // parent Directory
 
     int file_size = inode->size;
     char* buffer = (char*) malloc(file_size);

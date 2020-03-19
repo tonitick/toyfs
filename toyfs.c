@@ -82,10 +82,11 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] read_block: ino_num = %d, blk_idx = %d, {direct block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] read_block {direct block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[blk_idx];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
         
         memcpy(buffer, first_level_block, SIZE_PER_DATA_REGION);
 
@@ -93,16 +94,18 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
     }
     // indirect
     if (blk_idx >= NUM_FIRST_LEV_PTR_PER_INODE && blk_idx < NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] read_block: ino_num = %d, blk_idx = %d, {indirect block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] read_block {indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
         memcpy(buffer, second_level_block, SIZE_PER_DATA_REGION);
 
@@ -110,21 +113,24 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
     }
     // double indirect
     if (blk_idx >= NUM_FIRST_TWO_LEV_PTR_PER_INODE && blk_idx < NUM_ALL_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] read_block: ino_num = %d, blk_idx = %d, {double indirect block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] read_block {double indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
         char* third_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] read_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
         memcpy(buffer, third_level_block, SIZE_PER_DATA_REGION);
 
@@ -139,10 +145,11 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] write_block: ino_num = %d, blk_idx = %d, {direct block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] write_block {direct block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[blk_idx];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
         
         memcpy(first_level_block, buffer, SIZE_PER_DATA_REGION);
 
@@ -150,15 +157,17 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
     }
     // indirect
     if (blk_idx >= NUM_FIRST_LEV_PTR_PER_INODE && blk_idx < NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] write_block: ino_num = %d, blk_idx = %d, {indirect block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] write_block {indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
         memcpy(second_level_block, buffer, SIZE_PER_DATA_REGION);
 
@@ -166,20 +175,23 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
     }
     // double indirect
     if (blk_idx >= NUM_FIRST_TWO_LEV_PTR_PER_INODE && blk_idx < NUM_ALL_LEV_PTR_PER_INODE) {
-        printf("[DBUG INFO] write_block: ino_num = %d, blk_idx = %d, {double indirect block}\n", ino_num, blk_idx);
+        printf("[DBUG INFO] write_block {double indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
         char* first_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
         char* second_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
         char* third_level_block = data_regions[data_reg_idx].space;
+        printf("[DBUG INFO] write_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
         memcpy(third_level_block, buffer, SIZE_PER_DATA_REGION);
 

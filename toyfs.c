@@ -422,7 +422,7 @@ int get_inode_number(const char* path) {
 }
 
 static int do_getattr(const char* path, struct stat* st) {
-    printf("[DBUG INFO] getattr: path = %s\n", path);
+    // printf("[DBUG INFO] getattr: path = %s\n", path);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
 
@@ -452,7 +452,7 @@ static int do_getattr(const char* path, struct stat* st) {
 }
 
 static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi) {
-	printf("[DBUG INFO] readdir: path = %s\n", path);
+	// printf("[DBUG INFO] readdir: path = %s\n", path);
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;

@@ -92,7 +92,7 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
-        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -111,13 +111,13 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
-        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
-        data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* third_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
@@ -154,7 +154,7 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
-        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -172,13 +172,13 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
-        data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
-        data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
+        memcpy(&data_reg_idx, second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         char* third_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
@@ -285,7 +285,7 @@ int assign_block(int ino_num, int blk_idx) {
             printf("[DBUG INFO] assign_block {indirect pointer block}: %d\n", data_reg_idx);
         }
         else {
-            data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+            memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof (data_reg_idx));
         }
 
         // third level pointer
@@ -336,7 +336,8 @@ int reclaim_block(int ino_num, int blk_idx) {
         // get second level block index
         char* first_level_block = data_regions[first_level_data_reg_idx].space;
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
-        int second_level_data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        int second_level_data_reg_idx = -1;
+        memcpy(&second_level_data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(second_level_data_reg_idx));
         if (second_level_data_reg_idx < 0 || second_level_data_reg_idx >= SIZE_DBMAP) return -1;
         
         // reclaim second level block
@@ -363,13 +364,15 @@ int reclaim_block(int ino_num, int blk_idx) {
         // get second level block index
         char* first_level_block = data_regions[first_level_data_reg_idx].space;
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
-        int second_level_data_reg_idx = (int) first_level_block[first_level_offset * SIZE_DATA_BLK_PTR];
+        int second_level_data_reg_idx = -1;
+        memcpy(&second_level_data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(second_level_data_reg_idx));
         if (second_level_data_reg_idx < 0 || second_level_data_reg_idx >= SIZE_DBMAP) return -1;
 
         // third level block
         char* second_level_block = data_regions[second_level_data_reg_idx].space;
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
-        int third_level_data_reg_idx = (int) second_level_block[second_level_offset * SIZE_DATA_BLK_PTR];
+        int third_level_data_reg_idx = -1;
+        memcpy(&third_level_data_reg_idx, second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, sizeof(third_level_data_reg_idx));
         if (third_level_data_reg_idx < 0 || third_level_data_reg_idx >= SIZE_DBMAP) return -1;
         
         // reclaim third level block
@@ -479,7 +482,8 @@ int find_dir_entry_ino(int ino_num, const char* name) {
     memset(filename, 0, SIZE_FILENAME + 1);
     int offset = 0;
     while (offset < file_size) {
-        int sub_ino_num = (int) buffer[offset];
+        int sub_ino_num = -1;
+        memcpy(&sub_ino_num, buffer + offset, sizeof(sub_ino_num));
         memcpy(filename, buffer + offset + sizeof(sub_ino_num), SIZE_FILENAME);
         if (strcmp(filename, name) == 0 && sub_ino_num >=0) {
             free(buffer);
@@ -506,7 +510,8 @@ int remove_dir_entry(int ino_num, const char* name) {
     memset(filename, 0, SIZE_FILENAME + 1);
     int offset = 0;
     while (offset < file_size) {
-        int sub_ino_num = (int) buffer[offset];
+        int sub_ino_num = -1;
+        memcpy(&sub_ino_num, buffer + offset, sizeof(sub_ino_num));
         memcpy(filename, buffer + offset + sizeof(sub_ino_num), SIZE_FILENAME);
         if (strcmp(filename, name) == 0 && sub_ino_num >=0) break;
         offset += SIZE_DIR_ITEM;
@@ -607,7 +612,8 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
     memset(filename, 0, SIZE_FILENAME + 1);
     int cur_offset = 0;
     while (cur_offset < file_size) {
-        int sub_ino_num = (int) buffer[cur_offset];
+        int sub_ino_num = -1;
+        memcpy(&sub_ino_num, buffer + cur_offset, sizeof(sub_ino_num));
         memcpy(filename, buffer + cur_offset + sizeof(sub_ino_num), SIZE_FILENAME);
         if (sub_ino_num >= 0) filler(res_buf, filename, NULL, 0);
         cur_offset += SIZE_DIR_ITEM;

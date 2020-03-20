@@ -201,7 +201,7 @@ int get_new_block() {
     }
     
     printf("[DBUG INFO] get_new_block: data blocks are used up\n");
-    return -1;
+    return -ENOSPC; // no space left on device [4]
 }
 
 int get_new_inode() {
@@ -213,7 +213,7 @@ int get_new_inode() {
     }
     
     printf("[DBUG INFO] get_new_inode: inodes are used up\n");
-    return -1;
+    return -ENOSPC; // no space left on device [4]
 }
 
 int assign_block(int ino_num, int blk_idx) {
@@ -225,7 +225,7 @@ int assign_block(int ino_num, int blk_idx) {
         printf("[DBUG INFO] assign_block {direct block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level pointer
         int data_reg_idx = get_new_block();
-        if (data_reg_idx < 0) return -1;
+        if (data_reg_idx < 0) return data_reg_idx;
         inode->block[blk_idx] = data_reg_idx;
         printf("[DBUG INFO] assign_block {direct data block}: %d\n", data_reg_idx);
 
@@ -240,7 +240,7 @@ int assign_block(int ino_num, int blk_idx) {
         int data_reg_idx = -1;
         if (blk_idx == NUM_FIRST_LEV_PTR_PER_INODE) {
             data_reg_idx = get_new_block();
-            if (data_reg_idx < 0) return -1;
+            if (data_reg_idx < 0) return data_reg_idx;
             inode->block[NUM_DISK_PTRS_PER_INODE - 2] = data_reg_idx;
             printf("[DBUG INFO] assign_block {direct pointer block}: %d\n", data_reg_idx);
         }
@@ -252,7 +252,7 @@ int assign_block(int ino_num, int blk_idx) {
         char* first_level_block = data_regions[data_reg_idx].space;
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = get_new_block();
-        if (data_reg_idx < 0) return -1;
+        if (data_reg_idx < 0) return data_reg_idx;
         memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
         printf("[DBUG INFO] assign_block {indirect data block}: %d\n", data_reg_idx);
         inode->blocks = num_blocks + 1;
@@ -266,7 +266,7 @@ int assign_block(int ino_num, int blk_idx) {
         int data_reg_idx = -1;
         if (blk_idx == NUM_FIRST_TWO_LEV_PTR_PER_INODE) {
             data_reg_idx = get_new_block();
-            if (data_reg_idx < 0) return -1;
+            if (data_reg_idx < 0) return data_reg_idx;
             inode->block[NUM_DISK_PTRS_PER_INODE - 1] = data_reg_idx;
             printf("[DBUG INFO] assign_block {direct pointer block}: %d\n", data_reg_idx);
         }
@@ -280,7 +280,7 @@ int assign_block(int ino_num, int blk_idx) {
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         if (second_level_offset == 0) {
             data_reg_idx = get_new_block();
-            if (data_reg_idx < 0) return -1;
+            if (data_reg_idx < 0) return data_reg_idx;
             memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
             printf("[DBUG INFO] assign_block {indirect pointer block}: %d\n", data_reg_idx);
         }
@@ -291,7 +291,7 @@ int assign_block(int ino_num, int blk_idx) {
         // third level pointer
         char* second_level_block = data_regions[data_reg_idx].space;
         data_reg_idx = get_new_block();
-        if (data_reg_idx < 0) return -1;
+        if (data_reg_idx < 0) return data_reg_idx;
         memcpy(second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
         printf("[DBUG INFO] assign_block {double indirect data block}: %d\n", data_reg_idx);
         
@@ -664,7 +664,7 @@ static int do_mkdir(const char* path, mode_t mode) {
 
     // file info
     file_ino_num = get_new_inode();
-    if (file_ino_num < 0) return -1;
+    if (file_ino_num < 0) return file_ino_num;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 1; // directory
     file_inode->blocks = 0;
@@ -710,7 +710,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
 
     // file info
     file_ino_num = get_new_inode();
-    if (file_ino_num < 0) return -1;
+    if (file_ino_num < 0) return file_ino_num;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 0; // regular
     file_inode->blocks = 0;

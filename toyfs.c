@@ -33,15 +33,6 @@
 #include <errno.h>
 #include <stdbool.h>
 
-// char dir_list[ 256 ][ 256 ];
-// int curr_dir_idx = -1;
-// 
-// char files_list[ 256 ][ 256 ];
-// int curr_file_idx = -1;
-// 
-// char files_content[ 256 ][ 256 ];
-// int curr_file_content_idx = -1;
-
 struct SuperBlock {
     unsigned int size_ibmap;
     unsigned int size_dbmap;
@@ -59,8 +50,6 @@ struct SuperBlock superblock = {
     .num_disk_ptrs_per_inode = NUM_DISK_PTRS_PER_INODE,
 };
 
-// bool inode_bitmap[superblock.size_ibmap];
-// bool data_bitmap[superblock.size_dbmap];
 bool inode_bitmap[SIZE_IBMAP];
 bool data_bitmap[SIZE_DBMAP];
 
@@ -211,6 +200,7 @@ int get_new_block() {
         }
     }
     
+    printf("[DBUG INFO] get_new_block: data blocks are used up\n");
     return -1;
 }
 
@@ -222,6 +212,7 @@ int get_new_inode() {
         }
     }
     
+    printf("[DBUG INFO] get_new_inode: inodes are used up\n");
     return -1;
 }
 

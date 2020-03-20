@@ -1,0 +1,6 @@
+echo "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" > a
+echo "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" >> a
+echo "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" >> a
+echo "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" >> a
+cp a b
+cat b >> a (24 times)

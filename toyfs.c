@@ -456,7 +456,14 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
     return write_size;
 }
 
-int unlink_(int ino_num) {
+int rm_(int ino_num) {
+    struct INode* inode = &inode_table[ino_num];
+
+    int cur_block_num = inode->blocks;
+    for (int i = cur_block_num - 1; i >=0; i--) {
+        int result = reclaim_block(ino_num, i);
+        if (result < 0) return result;
+    }
     
     return 0;
 }
@@ -673,13 +680,36 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     return write_bytes == SIZE_DIR_ITEM ? 0 : -1;
 }
 
+static int do_unlink(const char* path) {
+    printf("[DBUG INFO] unlink: path = %s\n", path);
+    
+    int ino_num = get_inode_number(path);
+    if (ino_num < 0) return ino_num;
+    struct INode* inode = &inode_table[ino_num];    
+    if (inode->flag != 1) return -EISDIR; // is a directory [4]
+
+    if (inode->links_count < 1) return -1;
+    if (inode->links_count > 1) {
+        inode->links_count = inode->links_count - 1;
+    }
+    else {
+        int result = rm_(ino_num);
+        if (result < 0) return result;
+        // free inode
+        inode_bitmap[ino_num] = 0;
+    }
+
+    return 0;
+}
+
 static struct fuse_operations operations = {
-    .getattr	= do_getattr,
-    .readdir	= do_readdir,
-    .read		= do_read,
-    .write		= do_write,
-    .mkdir		= do_mkdir,
-    .mknod		= do_mknod,
+    .getattr = do_getattr,
+    .readdir = do_readdir,
+    .read = do_read,
+    .write = do_write,
+    .mkdir = do_mkdir,
+    .mknod = do_mknod,
+    .unlink = do_unlink,
 };
 
 int main( int argc, char* argv[] ) {

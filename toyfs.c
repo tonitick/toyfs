@@ -253,7 +253,7 @@ int assign_block(int ino_num, int blk_idx) {
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = get_new_block();
         if (data_reg_idx < 0) return data_reg_idx;
-        memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+        memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, &data_reg_idx, sizeof(data_reg_idx));
         printf("[DBUG INFO] assign_block {indirect data block}: %d\n", data_reg_idx);
         inode->blocks = num_blocks + 1;
         
@@ -281,7 +281,7 @@ int assign_block(int ino_num, int blk_idx) {
         if (second_level_offset == 0) {
             data_reg_idx = get_new_block();
             if (data_reg_idx < 0) return data_reg_idx;
-            memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+            memcpy(first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, &data_reg_idx, sizeof(data_reg_idx));
             printf("[DBUG INFO] assign_block {indirect pointer block}: %d\n", data_reg_idx);
         }
         else {
@@ -292,7 +292,7 @@ int assign_block(int ino_num, int blk_idx) {
         char* second_level_block = data_regions[data_reg_idx].space;
         data_reg_idx = get_new_block();
         if (data_reg_idx < 0) return data_reg_idx;
-        memcpy(second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, (char*) &data_reg_idx, sizeof(data_reg_idx));
+        memcpy(second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, &data_reg_idx, sizeof(data_reg_idx));
         printf("[DBUG INFO] assign_block {double indirect data block}: %d\n", data_reg_idx);
         
         inode->blocks = num_blocks + 1;
@@ -605,8 +605,21 @@ int get_inode_number(const char* path) {
 	int ino_num = ROOT_INUM; // root
     int lpos = 1; // bypass the preceding '/'
 	while (lpos < plen) {
-        // TODO: add softlink handling here
+        // handle softlink
+        struct INode* inode = &inode_table[ino_num];
+        int link_ino_num = ino_num;
+        while (inode->flag == 2) {
+            char soft_link_name[SIZE_FILENAME + 1];
+            memset(soft_link_name, 0, SIZE_FILENAME + 1);
+            int read_bytes = read_(ino_num, soft_link_name, inode->size, 0);
+            if (read_bytes != inode->size) return -1;
+            link_ino_num = get_inode_number(soft_link_name);
+            if (link_ino_num < 0) return link_ino_num;
+            inode = &inode_table[link_ino_num];
+        }
+        ino_num = link_ino_num;
 
+        // handle next filename
         int rpos = lpos;
         while (rpos < plen && path[rpos] != '/')
             rpos++;
@@ -647,7 +660,10 @@ static int do_getattr(const char* path, struct stat* st) {
     else if (inode->flag == 1) {
         st->st_mode = S_IFDIR | 0755; // currently no mode info in inode, set to 755 for directory
     }
-
+    else if (inode->flag == 2) {
+        st->st_mode = S_IFLNK | 0777; // currently no mode info in inode, set to 777 for soft link
+    }
+    
     return 0;
 }
 
@@ -738,7 +754,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     parent_inode->links_count = parent_inode->links_count + 1; // subdir has another ".." file pointing to parent
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
-    memcpy(new_dir_entry, (char*) &file_ino_num, sizeof(file_ino_num));
+    memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
     memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
     int write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
     
@@ -784,7 +800,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     struct INode* parent_inode = &inode_table[parent_ino_num];
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
-    memcpy(new_dir_entry, (char*) &file_ino_num, sizeof(file_ino_num));
+    memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
     memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
     int write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
 
@@ -919,7 +935,7 @@ static int do_link(const char* target_path, const char* path) {
     struct INode* parent_inode = &inode_table[parent_ino_num];
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
-    memcpy(new_dir_entry, (char*) &file_ino_num, sizeof(file_ino_num));
+    memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
     memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
     int write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
     
@@ -975,7 +991,7 @@ static int do_symlink(const char* target_path, const char* path) {
     parent_inode->links_count = parent_inode->links_count + 1; // subdir has another ".." file pointing to parent
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
-    memcpy(new_dir_entry, (char*) &file_ino_num, sizeof(file_ino_num));
+    memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
     memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
     write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
     

@@ -701,8 +701,8 @@ static int do_write(const char* path, const char* buffer, size_t size, off_t off
 static int do_mkdir(const char* path, mode_t mode) {
     printf("[DIRECT CALL INFO] mkidr: path = %s\n", path);
 
+    // get new file and parent info
     int plen = strlen(path);
-
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
@@ -720,6 +720,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
 
@@ -747,8 +748,8 @@ static int do_mkdir(const char* path, mode_t mode) {
 static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     printf("[DIRECT CALL INFO] mknod: path = %s\n", path);
 
+    // get new file and parent info
     int plen = strlen(path);
-
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
@@ -766,6 +767,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
 
@@ -792,8 +794,8 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
 static int do_unlink(const char* path) {
     printf("[DIRECT CALL INFO] unlink: path = %s\n", path);
 
+    // get delete file and parent info
     int plen = strlen(path);
-
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
@@ -811,6 +813,7 @@ static int do_unlink(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
     
@@ -838,8 +841,8 @@ static int do_unlink(const char* path) {
 static int do_rmdir(const char* path) {
     printf("[DIRECT CALL INFO] rmdir: path = %s\n", path);
 
+    // get delete file and parent info
     int plen = strlen(path);
-
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
@@ -857,6 +860,7 @@ static int do_rmdir(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
 
@@ -883,9 +887,8 @@ static int do_link(const char* target_path, const char* path) {
     struct INode* target_inode = &inode_table[target_ino_num];
     if (target_inode->flag == 1) return -EPERM; // operation not permitted [4]: cannot hard link to directory
 
-    // creat link file
+    // get new file and parent info
     int plen = strlen(path);
-
     int pos = plen - 1;
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
@@ -903,9 +906,10 @@ static int do_link(const char* target_path, const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
-    file_ino_num = target_ino_num;
+    file_ino_num = target_ino_num; // link to target inode
 
     // file info
     struct INode* file_inode = &inode_table[file_ino_num];
@@ -925,7 +929,57 @@ static int do_link(const char* target_path, const char* path) {
 static int do_symlink(const char* target_path, const char* path) {
     printf("[DIRECT CALL INFO] symlink: target_path = %s, path = %s\n", target_path, path);
 
-    return 0;
+    // target file info
+    int target_ino_num = get_inode_number(target_path);
+    if (target_ino_num < 0) return -ENOENT; // no such file or directory [4]
+    struct INode* target_inode = &inode_table[target_ino_num];
+    if (target_inode->flag == 1) return -EPERM; // operation not permitted [4]: cannot hard link to directory
+
+    // get new file and parent info
+    int plen = strlen(path);
+    int pos = plen - 1;
+    while(path[pos] != '/') pos--;
+    if (pos < 0) return -ENOENT; // no such file or directory [4]
+    int file_name_len = plen - 1 - pos;
+    if (file_name_len <= 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
+    char file_name[SIZE_FILENAME + 1];
+    memset(file_name, 0, SIZE_FILENAME + 1);
+    memcpy(file_name, path + pos + 1, file_name_len);
+    if (pos == 0) pos = 1; // root path 
+    char* parent_name = (char*) malloc(pos + 1);
+    memset(parent_name, 0, pos + 1);
+    memcpy(parent_name, path, pos);
+
+    int parent_ino_num = get_inode_number(parent_name);
+    free(parent_name);
+    if (parent_ino_num < 0) return parent_ino_num;
+    if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
+    int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
+    if (file_ino_num >= 0) return -EEXIST; // file exists [4]
+
+    // file info
+    file_ino_num = get_new_inode();
+    if (file_ino_num < 0) return file_ino_num;
+    struct INode* file_inode = &inode_table[file_ino_num];
+    file_inode->flag = 2; // soft link
+    file_inode->blocks = 0;
+    file_inode->links_count = 1;
+    file_inode->size = 0;
+    int write_bytes = write_(file_ino_num, target_path, strlen(target_path), file_inode->size);
+    
+    return write_bytes == strlen(target_path) ? 0 : -1;
+    
+    // parent directory info
+    struct INode* parent_inode = &inode_table[parent_ino_num];
+    parent_inode->links_count = parent_inode->links_count + 1; // subdir has another ".." file pointing to parent
+    char new_dir_entry[SIZE_DIR_ITEM];
+    memset(new_dir_entry, 0, SIZE_DIR_ITEM);
+    memcpy(new_dir_entry, (char*) &file_ino_num, sizeof(file_ino_num));
+    memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
+    write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
+    
+    return write_bytes == SIZE_DIR_ITEM ? 0 : -1;
 }
 
 static struct fuse_operations operations = {

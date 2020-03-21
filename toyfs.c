@@ -285,7 +285,7 @@ int assign_block(int ino_num, int blk_idx) {
             printf("[DBUG INFO] assign_block {indirect pointer block}: %d\n", data_reg_idx);
         }
         else {
-            memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof (data_reg_idx));
+            memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
         }
 
         // third level pointer
@@ -456,7 +456,7 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
     return write_size;
 }
 
-int rm_(int ino_num) {
+int remove_file_blocks(int ino_num) {
     struct INode* inode = &inode_table[ino_num];
 
     int cur_block_num = inode->blocks;
@@ -538,6 +538,58 @@ int remove_dir_entry(int ino_num, const char* name) {
 
     free(buffer);
     return -ENOENT; // no such file or directory [4]
+}
+
+int rmdir_(int ino_num) {
+    if (ino_num <=0 || ino_num > SIZE_IBMAP) return -1;
+    struct INode* inode = &inode_table[ino_num];
+    // regular file or soft link
+    if (inode->flag == 0 || inode->flag == 2) {
+        if (inode->links_count > 1) {
+            inode->links_count = inode->links_count - 1;
+        }
+        else {
+            int result = remove_file_blocks(ino_num);
+            if (result < 0) return result;
+            
+            inode_bitmap[ino_num] = 0;
+        }
+        
+        return 0;
+    }
+    // direcotory
+    else if (inode->flag == 1) {
+        int file_size = inode->size;
+        if (file_size % SIZE_DIR_ITEM != 0) return -1;
+        char* buffer = (char*) malloc(file_size);
+        int read_bytes = read_(ino_num, buffer, file_size, 0);
+        if (read_bytes != file_size) return -1;
+        
+        char filename[SIZE_FILENAME + 1];
+        memset(filename, 0, SIZE_FILENAME + 1);
+        int cur_offset = 0;
+        while (cur_offset < file_size) {
+            int sub_ino_num = -1;
+            memcpy(&sub_ino_num, buffer + cur_offset, sizeof(sub_ino_num));
+            memcpy(filename, buffer + cur_offset + sizeof(sub_ino_num), SIZE_FILENAME);
+            if (sub_ino_num >= 0 && sub_ino_num < SIZE_IBMAP) rmdir_(sub_ino_num); // remove recursively
+            inode->links_count = inode->links_count - 1;
+            
+            int result = remove_dir_entry(ino_num, filename);
+            if (result < 0) return result;
+            
+            cur_offset += SIZE_DIR_ITEM;
+        }
+
+        if (inode->links_count != 2) return -1; // self and "." pointing to self
+        int result = remove_file_blocks(ino_num);
+        if (result < 0) return result;
+
+        inode_bitmap[ino_num] = 0;
+
+        return 0;
+    }
+    else return -1; // not suported type
 }
 
 int get_inode_number(const char* path) {
@@ -646,7 +698,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
     int file_name_len = plen - 1 - pos;
-    if (file_name_len < 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len <= 0) return -ENOENT; // no such file or directory [4]
     if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
     char file_name[SIZE_FILENAME + 1];
     memset(file_name, 0, SIZE_FILENAME + 1);
@@ -692,7 +744,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
     int file_name_len = plen - 1 - pos;
-    if (file_name_len < 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len <= 0) return -ENOENT; // no such file or directory [4]
     if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
     char file_name[SIZE_FILENAME + 1];
     memset(file_name, 0, SIZE_FILENAME + 1);
@@ -737,7 +789,7 @@ static int do_unlink(const char* path) {
     while(path[pos] != '/') pos--;
     if (pos < 0) return -ENOENT; // no such file or directory [4]
     int file_name_len = plen - 1 - pos;
-    if (file_name_len < 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len <= 0) return -ENOENT; // no such file or directory [4]
     if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
     char file_name[SIZE_FILENAME + 1];
     memset(file_name, 0, SIZE_FILENAME + 1);
@@ -754,14 +806,14 @@ static int do_unlink(const char* path) {
     if (file_ino_num < 0) return file_ino_num;
     
     // remove file
-    struct INode* inode = &inode_table[file_ino_num];    
+    struct INode* inode = &inode_table[file_ino_num];
     if (inode->flag == 1) return -EISDIR; // is a directory [4]
     if (inode->links_count < 1) return -1;
     if (inode->links_count > 1) {
         inode->links_count = inode->links_count - 1;
     }
     else {
-        int result = rm_(file_ino_num);
+        int result = remove_file_blocks(file_ino_num);
         if (result < 0) return result;
         // free inode
         inode_bitmap[file_ino_num] = 0;
@@ -769,6 +821,44 @@ static int do_unlink(const char* path) {
 
     // remove parent directory entry
     int result = remove_dir_entry(parent_ino_num, file_name);
+    if (result < 0) return result;
+
+    return 0;
+}
+
+static int do_rmdir(const char* path) {
+    printf("[DBUG INFO] rmdir: path = %s\n", path);
+
+    int plen = strlen(path);
+
+    int pos = plen - 1;
+    while(path[pos] != '/') pos--;
+    if (pos < 0) return -ENOENT; // no such file or directory [4]
+    int file_name_len = plen - 1 - pos;
+    if (file_name_len <= 0) return -ENOENT; // no such file or directory [4]
+    if (file_name_len > SIZE_FILENAME) return -ENAMETOOLONG; // file name too long [4]
+    char file_name[SIZE_FILENAME + 1];
+    memset(file_name, 0, SIZE_FILENAME + 1);
+    memcpy(file_name, path + pos + 1, file_name_len);
+    if (pos == 0) pos = 1; // root path 
+    char* parent_name = (char*) malloc(pos + 1);
+    memset(parent_name, 0, pos + 1);
+    memcpy(parent_name, path, pos);
+
+    int parent_ino_num = get_inode_number(parent_name);
+    free(parent_name);
+    if (parent_ino_num < 0) return parent_ino_num;
+    int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
+    if (file_ino_num < 0) return file_ino_num;
+
+    // remove directory
+    struct INode* inode = &inode_table[file_ino_num];
+    if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
+    int result = rmdir_(file_ino_num);
+    if (result < 0) return result;
+
+    // remove parent directory entry
+    result = remove_dir_entry(parent_ino_num, file_name);
     if (result < 0) return result;
 
     return 0;
@@ -782,9 +872,10 @@ static struct fuse_operations operations = {
     .mkdir = do_mkdir,
     .mknod = do_mknod,
     .unlink = do_unlink,
+    .rmdir = do_rmdir,
 };
 
-int main( int argc, char* argv[] ) {
+int main(int argc, char* argv[]) {
     // initialize meta data
     for (int i = 0; i < SIZE_IBMAP; i++) inode_bitmap[i] = 0;
     for (int i = 0; i < SIZE_DBMAP; i++) data_bitmap[i] = 0;

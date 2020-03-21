@@ -572,8 +572,12 @@ int rmdir_(int ino_num) {
             int sub_ino_num = -1;
             memcpy(&sub_ino_num, buffer + cur_offset, sizeof(sub_ino_num));
             memcpy(filename, buffer + cur_offset + sizeof(sub_ino_num), SIZE_FILENAME);
-            if (sub_ino_num >= 0 && sub_ino_num < SIZE_IBMAP) rmdir_(sub_ino_num); // remove recursively
-            inode->links_count = inode->links_count - 1;
+            if (sub_ino_num >= 0 && sub_ino_num < SIZE_IBMAP) {
+                int entry_flag = inode_table[sub_ino_num].flag;
+                int result = rmdir_(sub_ino_num); // remove recursively
+                if (result < 0) return result;
+                if (entry_flag == 1) inode->links_count = inode->links_count - 1;
+            }
             
             int result = remove_dir_entry(ino_num, filename);
             if (result < 0) return result;
@@ -581,7 +585,10 @@ int rmdir_(int ino_num) {
             cur_offset += SIZE_DIR_ITEM;
         }
 
-        if (inode->links_count != 2) return -1; // self and "." pointing to self
+        if (inode->links_count != 2) {
+            printf("[ERROR] rmdir_: ino_num = %d, links_count = %d\n", ino_num, inode->links_count);
+            return -1; // self and "." pointing to self
+        }
         int result = remove_file_blocks(ino_num);
         if (result < 0) return result;
 
@@ -860,6 +867,7 @@ static int do_rmdir(const char* path) {
     // remove parent directory entry
     result = remove_dir_entry(parent_ino_num, file_name);
     if (result < 0) return result;
+    inode_table[parent_ino_num].links_count = inode_table[parent_ino_num].links_count - 1; // the ".." in subdir
 
     return 0;
 }

@@ -1,4 +1,8 @@
-/* Reference
+/* 
+Authors:
+Zheng Zhong
+
+Reference:
     [1] fuse getattr: https://libfuse.github.io/doxygen/structfuse__operations.html#a60144dbd1a893008d9112e949300eb77
     [2] stat struct: http://man7.org/linux/man-pages/man2/stat.2.html
     [3] inode struct: http://books.gigatux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html
@@ -576,7 +580,7 @@ int rmdir_(int ino_num) {
                 int entry_flag = inode_table[sub_ino_num].flag;
                 int result = rmdir_(sub_ino_num); // remove recursively
                 if (result < 0) return result;
-                if (entry_flag == 1) inode->links_count = inode->links_count - 1;
+                if (entry_flag == 1) inode->links_count = inode->links_count - 1; // subdir ".." link
             }
             
             int result = remove_dir_entry(ino_num, filename);
@@ -605,21 +609,6 @@ int get_inode_number(const char* path) {
 	int ino_num = ROOT_INUM; // root
     int lpos = 1; // bypass the preceding '/'
 	while (lpos < plen) {
-        // handle softlink
-        struct INode* inode = &inode_table[ino_num];
-        int link_ino_num = ino_num;
-        while (inode->flag == 2) {
-            char soft_link_name[SIZE_FILENAME + 1];
-            memset(soft_link_name, 0, SIZE_FILENAME + 1);
-            int read_bytes = read_(ino_num, soft_link_name, inode->size, 0);
-            if (read_bytes != inode->size) return -1;
-            link_ino_num = get_inode_number(soft_link_name);
-            if (link_ino_num < 0) return link_ino_num;
-            inode = &inode_table[link_ino_num];
-        }
-        ino_num = link_ino_num;
-
-        // handle next filename
         int rpos = lpos;
         while (rpos < plen && path[rpos] != '/')
             rpos++;
@@ -715,7 +704,7 @@ static int do_write(const char* path, const char* buffer, size_t size, off_t off
 }
 
 static int do_mkdir(const char* path, mode_t mode) {
-    printf("[DIRECT CALL INFO] mkidr: path = %s\n", path);
+    printf("[DIRECT CALL INFO] mkdir: path = %s\n", path);
 
     // get new file and parent info
     int plen = strlen(path);
@@ -981,7 +970,6 @@ static int do_symlink(const char* target_path, const char* path) {
     
     // parent directory info
     struct INode* parent_inode = &inode_table[parent_ino_num];
-    parent_inode->links_count = parent_inode->links_count + 1; // subdir has another ".." file pointing to parent
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
     memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
@@ -990,8 +978,8 @@ static int do_symlink(const char* target_path, const char* path) {
     return write_bytes == SIZE_DIR_ITEM ? 0 : -1;
 }
 
-static int do_readlink(const char* path, char* res_buf, size_t len) {
-    printf("[DIRECT CALL INFO] readdir: path = %s\n", path);
+static int do_readlink(const char* path, char* res_buf, size_t buf_len) {
+    printf("[DIRECT CALL INFO] readlink: path = %s, buf_len = %lu\n", path, buf_len);
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
@@ -999,8 +987,9 @@ static int do_readlink(const char* path, char* res_buf, size_t len) {
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 2) return -1; // not a link
 
+    memset(res_buf, 0, buf_len);
     int file_size = inode->size;
-    int read_size = file_size < len ? file_size : len;
+    int read_size = (file_size < buf_len -1) ? file_size : (buf_len - 1); // buf_len contains a null end for string
     int read_bytes = read_(ino_num, res_buf, read_size, 0);
     if (read_bytes != read_size) return -1;
     

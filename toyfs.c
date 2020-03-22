@@ -401,7 +401,7 @@ int reclaim_block(int ino_num, int blk_idx) {
 
 int read_(int ino_num, char* buffer, size_t size, off_t offset) {
     if (offset < 0 || size < 0) return -1;
-    if (offset + size == 0) return 0;
+    if (size == 0) return 0;
     int read_size = 0;
     int cur_offset = offset;
     int file_size = inode_table[ino_num].size;
@@ -426,7 +426,7 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
     // add blocks
     int cur_block_num = inode_table[ino_num].blocks;
     if (offset < 0 || size < 0) return -1;
-    if (offset + size == 0) return 0;
+    if (size == 0) return 0;
     int end_block_num = (offset + size - 1) / SIZE_PER_DATA_REGION + 1;
     for (int i = cur_block_num; i < end_block_num; i++) {
         int result = assign_block(ino_num, i);
@@ -663,7 +663,7 @@ static int do_getattr(const char* path, struct stat* st) {
     else if (inode->flag == 2) {
         st->st_mode = S_IFLNK | 0777; // currently no mode info in inode, set to 777 for soft link
     }
-    
+
     return 0;
 }
 
@@ -945,12 +945,6 @@ static int do_link(const char* target_path, const char* path) {
 static int do_symlink(const char* target_path, const char* path) {
     printf("[DIRECT CALL INFO] symlink: target_path = %s, path = %s\n", target_path, path);
 
-    // target file info
-    int target_ino_num = get_inode_number(target_path);
-    if (target_ino_num < 0) return -ENOENT; // no such file or directory [4]
-    struct INode* target_inode = &inode_table[target_ino_num];
-    if (target_inode->flag == 1) return -EPERM; // operation not permitted [4]: cannot hard link to directory
-
     // get new file and parent info
     int plen = strlen(path);
     int pos = plen - 1;
@@ -983,8 +977,7 @@ static int do_symlink(const char* target_path, const char* path) {
     file_inode->links_count = 1;
     file_inode->size = 0;
     int write_bytes = write_(file_ino_num, target_path, strlen(target_path), file_inode->size);
-    
-    return write_bytes == strlen(target_path) ? 0 : -1;
+    if (write_bytes != strlen(target_path)) return -1;
     
     // parent directory info
     struct INode* parent_inode = &inode_table[parent_ino_num];
@@ -994,8 +987,24 @@ static int do_symlink(const char* target_path, const char* path) {
     memcpy(new_dir_entry, &file_ino_num, sizeof(file_ino_num));
     memcpy(new_dir_entry + sizeof(file_ino_num), file_name, SIZE_FILENAME);
     write_bytes = write_(parent_ino_num, new_dir_entry, SIZE_DIR_ITEM, parent_inode->size);
-    
     return write_bytes == SIZE_DIR_ITEM ? 0 : -1;
+}
+
+static int do_readlink(const char* path, char* res_buf, size_t len) {
+    printf("[DIRECT CALL INFO] readdir: path = %s\n", path);
+
+    int ino_num = get_inode_number(path);
+    if (ino_num < 0) return ino_num;
+    
+    struct INode* inode = &inode_table[ino_num];
+    if (inode->flag != 2) return -1; // not a link
+
+    int file_size = inode->size;
+    int read_size = file_size < len ? file_size : len;
+    int read_bytes = read_(ino_num, res_buf, read_size, 0);
+    if (read_bytes != read_size) return -1;
+    
+    return 0;
 }
 
 static struct fuse_operations operations = {
@@ -1009,6 +1018,7 @@ static struct fuse_operations operations = {
     .rmdir = do_rmdir,
     .link = do_link,
     .symlink = do_symlink,
+    .readlink = do_readlink,
 };
 
 int main(int argc, char* argv[]) {

@@ -8,7 +8,7 @@ Reference:
     [3] inode struct: http://books.gigatux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html
     [4] <sys/types.h> header: http://www.doc.ic.ac.uk/~svb/oslab/Minix/usr/include/sys/types.h
 */
-#define FUSE_USE_VERSION 30
+#define FUSE_USE_VERSION 29
 
 #define SIZE_IBMAP 32 // number of inode
 #define SIZE_DBMAP 512 // number of data blocks
@@ -996,6 +996,10 @@ static int do_readlink(const char* path, char* res_buf, size_t buf_len) {
     return 0;
 }
 
+static int do_utimens(const char* a, const struct timespec tv[2]) {
+    return 0; // an empty function to prevent prompt in 'touch file'
+}
+
 static struct fuse_operations operations = {
     .getattr = do_getattr,
     .readdir = do_readdir,
@@ -1008,6 +1012,7 @@ static struct fuse_operations operations = {
     .link = do_link,
     .symlink = do_symlink,
     .readlink = do_readlink,
+    .utimens = do_utimens,
 };
 
 int main(int argc, char* argv[]) {

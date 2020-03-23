@@ -72,7 +72,7 @@ struct DataBlock {
 struct DataBlock data_regions[SIZE_DBMAP];
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
@@ -142,7 +142,7 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 }
 
 int write_block(int ino_num, int blk_idx, const char* buffer) {    
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
@@ -235,7 +235,7 @@ int get_new_inode() {
 }
 
 int assign_block(int ino_num, int blk_idx) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     int num_blocks = inode->blocks;
     if (blk_idx != num_blocks) return -1;
@@ -330,7 +330,7 @@ int assign_block(int ino_num, int blk_idx) {
 }
 
 int reclaim_block(int ino_num, int blk_idx) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     int num_blocks = inode->blocks;
     if (blk_idx != num_blocks - 1) return -1;
@@ -427,7 +427,7 @@ int read_(int ino_num, char* buffer, size_t size, off_t offset) {
     if (size == 0) return 0;
     int read_size = 0;
     int cur_offset = offset;
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     int file_size = inode_table[ino_num].size;
     char blk_buff[SIZE_PER_DATA_REGION];
     while (cur_offset < file_size && read_size < size) {
@@ -447,7 +447,7 @@ int read_(int ino_num, char* buffer, size_t size, off_t offset) {
 }
 
 int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     // add blocks
     int cur_block_num = inode_table[ino_num].blocks;
     if (offset < 0 || size < 0) return -1;
@@ -482,7 +482,7 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
 }
 
 int remove_file_blocks(int ino_num) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
 
     int cur_block_num = inode->blocks;
@@ -495,7 +495,7 @@ int remove_file_blocks(int ino_num) {
 }
 
 int find_dir_entry_ino(int ino_num, const char* name) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
     
@@ -524,7 +524,7 @@ int find_dir_entry_ino(int ino_num, const char* name) {
 }
 
 int remove_dir_entry(int ino_num, const char* name) {
-	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
     
@@ -628,11 +628,11 @@ int rmdir_(int ino_num) {
 }
 
 int get_inode_number(const char* path) {
-	// get inode number from an absolute path
+    // get inode number from an absolute path
     int plen = strlen(path);
-	int ino_num = ROOT_INUM; // root
+    int ino_num = ROOT_INUM; // root
     int lpos = 1; // bypass the preceding '/'
-	while (lpos < plen) {
+    while (lpos < plen) {
         int rpos = lpos;
         while (rpos < plen && path[rpos] != '/')
             rpos++;
@@ -651,7 +651,7 @@ static int do_getattr(const char* path, struct stat* st) {
     printf("[DIRECT CALL INFO] getattr: path = %s\n", path);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
-	if (ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num >= SIZE_IBMAP) return -1;
 
     struct INode* inode = &inode_table[ino_num];
     
@@ -686,7 +686,7 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
-	if (ino_num >= SIZE_IBMAP) return -1;
+    if (ino_num >= SIZE_IBMAP) return -1;
     
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
@@ -751,7 +751,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
-	if (parent_ino_num >= SIZE_IBMAP) return -1;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
@@ -759,7 +759,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     // file info
     file_ino_num = get_new_inode();
     if (file_ino_num < 0) return file_ino_num;
-	if (file_ino_num >= SIZE_IBMAP) return -1;
+    if (file_ino_num >= SIZE_IBMAP) return -1;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 1; // directory
     file_inode->blocks = 0;
@@ -800,7 +800,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
-	if (parent_ino_num >= SIZE_IBMAP) return -1;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
@@ -808,7 +808,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     // file info
     file_ino_num = get_new_inode();
     if (file_ino_num < 0) return file_ino_num;
-	if (file_ino_num  >= SIZE_IBMAP) return -1;
+    if (file_ino_num  >= SIZE_IBMAP) return -1;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 0; // regular
     file_inode->blocks = 0;
@@ -848,7 +848,7 @@ static int do_unlink(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
-	if (parent_ino_num >= SIZE_IBMAP) return -1;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
@@ -897,7 +897,7 @@ static int do_rmdir(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
-	if (parent_ino_num >= SIZE_IBMAP) return -1;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
@@ -946,7 +946,7 @@ static int do_link(const char* target_path, const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
-	if (parent_ino_num >= SIZE_IBMAP) return -1;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0 && file_ino_num < SIZE_IBMAP) return -EEXIST; // file exists [4]

@@ -72,12 +72,14 @@ struct DataBlock {
 struct DataBlock data_regions[SIZE_DBMAP];
 
 int read_block(int ino_num, int blk_idx, char* buffer) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
         printf("[DBUG INFO] read_block {direct block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[blk_idx];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -91,12 +93,14 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
         
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -110,18 +114,21 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
         
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         memcpy(&data_reg_idx, second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* third_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] read_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
@@ -135,12 +142,14 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
 }
 
 int write_block(int ino_num, int blk_idx, const char* buffer) {    
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     // direct
     if (blk_idx < NUM_FIRST_LEV_PTR_PER_INODE) {
         printf("[DBUG INFO] write_block {direct block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[blk_idx];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -153,12 +162,14 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
         printf("[DBUG INFO] write_block {indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 2];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
         
@@ -171,18 +182,21 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
         printf("[DBUG INFO] write_block {double indirect block}: ino_num = %d, blk_idx = %d\n", ino_num, blk_idx);
         // first level block
         int data_reg_idx = inode->block[NUM_DISK_PTRS_PER_INODE - 1];
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {first level}: data_reg_idx = %d\n", data_reg_idx);
 
         // second level block
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         memcpy(&data_reg_idx, first_level_block + first_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* second_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {second level}: data_reg_idx = %d\n", data_reg_idx);
 
         // third level block
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
         memcpy(&data_reg_idx, second_level_block + second_level_offset * SIZE_DATA_BLK_PTR, sizeof(data_reg_idx));
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* third_level_block = data_regions[data_reg_idx].space;
         printf("[DBUG INFO] write_block {third level}: data_reg_idx = %d\n", data_reg_idx);
 
@@ -221,6 +235,7 @@ int get_new_inode() {
 }
 
 int assign_block(int ino_num, int blk_idx) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     int num_blocks = inode->blocks;
     if (blk_idx != num_blocks) return -1;
@@ -253,6 +268,7 @@ int assign_block(int ino_num, int blk_idx) {
         }
 
         // second level pointer
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         int first_level_offset = blk_idx - NUM_FIRST_LEV_PTR_PER_INODE;
         data_reg_idx = get_new_block();
@@ -279,6 +295,7 @@ int assign_block(int ino_num, int blk_idx) {
         }
 
         // second level pointer
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* first_level_block = data_regions[data_reg_idx].space;
         int first_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) / NUM_PTR_PER_BLK;
         int second_level_offset = (blk_idx - NUM_FIRST_TWO_LEV_PTR_PER_INODE) % NUM_PTR_PER_BLK;
@@ -293,6 +310,7 @@ int assign_block(int ino_num, int blk_idx) {
         }
 
         // third level pointer
+        if (data_reg_idx < 0 || data_reg_idx >= SIZE_DBMAP) return -1;
         char* second_level_block = data_regions[data_reg_idx].space;
         data_reg_idx = get_new_block();
         if (data_reg_idx < 0) return data_reg_idx;
@@ -312,6 +330,7 @@ int assign_block(int ino_num, int blk_idx) {
 }
 
 int reclaim_block(int ino_num, int blk_idx) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     int num_blocks = inode->blocks;
     if (blk_idx != num_blocks - 1) return -1;
@@ -408,6 +427,7 @@ int read_(int ino_num, char* buffer, size_t size, off_t offset) {
     if (size == 0) return 0;
     int read_size = 0;
     int cur_offset = offset;
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     int file_size = inode_table[ino_num].size;
     char blk_buff[SIZE_PER_DATA_REGION];
     while (cur_offset < file_size && read_size < size) {
@@ -427,6 +447,7 @@ int read_(int ino_num, char* buffer, size_t size, off_t offset) {
 }
 
 int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     // add blocks
     int cur_block_num = inode_table[ino_num].blocks;
     if (offset < 0 || size < 0) return -1;
@@ -461,6 +482,7 @@ int write_(int ino_num, const char* buffer, size_t size, off_t offset) {
 }
 
 int remove_file_blocks(int ino_num) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
 
     int cur_block_num = inode->blocks;
@@ -473,6 +495,7 @@ int remove_file_blocks(int ino_num) {
 }
 
 int find_dir_entry_ino(int ino_num, const char* name) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
     
@@ -501,6 +524,7 @@ int find_dir_entry_ino(int ino_num, const char* name) {
 }
 
 int remove_dir_entry(int ino_num, const char* name) {
+	if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
     
@@ -545,7 +569,7 @@ int remove_dir_entry(int ino_num, const char* name) {
 }
 
 int rmdir_(int ino_num) {
-    if (ino_num <=0 || ino_num > SIZE_IBMAP) return -1;
+    if (ino_num < 0 || ino_num >= SIZE_IBMAP) return -1;
     struct INode* inode = &inode_table[ino_num];
     // regular file or soft link
     if (inode->flag == 0 || inode->flag == 2) {
@@ -627,6 +651,7 @@ static int do_getattr(const char* path, struct stat* st) {
     printf("[DIRECT CALL INFO] getattr: path = %s\n", path);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
+	if (ino_num >= SIZE_IBMAP) return -1;
 
     struct INode* inode = &inode_table[ino_num];
     
@@ -661,6 +686,7 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
+	if (ino_num >= SIZE_IBMAP) return -1;
     
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 1) return -ENOTDIR; // not a directory [4]
@@ -725,6 +751,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+	if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
@@ -732,6 +759,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     // file info
     file_ino_num = get_new_inode();
     if (file_ino_num < 0) return file_ino_num;
+	if (file_ino_num >= SIZE_IBMAP) return -1;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 1; // directory
     file_inode->blocks = 0;
@@ -772,6 +800,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+	if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
@@ -779,6 +808,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
     // file info
     file_ino_num = get_new_inode();
     if (file_ino_num < 0) return file_ino_num;
+	if (file_ino_num  >= SIZE_IBMAP) return -1;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 0; // regular
     file_inode->blocks = 0;
@@ -818,9 +848,11 @@ static int do_unlink(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+	if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
+    if (file_ino_num >= SIZE_IBMAP) return -1;
     
     // remove file
     struct INode* inode = &inode_table[file_ino_num];
@@ -865,9 +897,11 @@ static int do_rmdir(const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+	if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num < 0) return file_ino_num;
+    if (file_ino_num >= SIZE_IBMAP) return -1;
 
     // remove directory
     struct INode* inode = &inode_table[file_ino_num];
@@ -888,7 +922,8 @@ static int do_link(const char* target_path, const char* path) {
 
     // target file info
     int target_ino_num = get_inode_number(target_path);
-    if (target_ino_num < 0) return -ENOENT; // no such file or directory [4]
+    if (target_ino_num < 0) return target_ino_num;
+    if (target_ino_num >= SIZE_IBMAP) return -1;
     struct INode* target_inode = &inode_table[target_ino_num];
     if (target_inode->flag == 1) return -EPERM; // operation not permitted [4]: cannot hard link to directory
 
@@ -911,9 +946,11 @@ static int do_link(const char* target_path, const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+	if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
-    if (file_ino_num >= 0) return -EEXIST; // file exists [4]
+    if (file_ino_num >= 0 && file_ino_num < SIZE_IBMAP) return -EEXIST; // file exists [4]
+    if (file_ino_num >= SIZE_IBMAP) return -1;
     file_ino_num = target_ino_num; // link to target inode
 
     // file info
@@ -953,6 +990,7 @@ static int do_symlink(const char* target_path, const char* path) {
     int parent_ino_num = get_inode_number(parent_name);
     free(parent_name);
     if (parent_ino_num < 0) return parent_ino_num;
+    if (parent_ino_num >= SIZE_IBMAP) return -1;
     if (inode_table[parent_ino_num].flag != 1) return -1; // parent need to be a directory
     int file_ino_num = find_dir_entry_ino(parent_ino_num, file_name);
     if (file_ino_num >= 0) return -EEXIST; // file exists [4]
@@ -960,6 +998,7 @@ static int do_symlink(const char* target_path, const char* path) {
     // file info
     file_ino_num = get_new_inode();
     if (file_ino_num < 0) return file_ino_num;
+    if (file_ino_num >= SIZE_IBMAP) return -1;
     struct INode* file_inode = &inode_table[file_ino_num];
     file_inode->flag = 2; // soft link
     file_inode->blocks = 0;
@@ -983,6 +1022,7 @@ static int do_readlink(const char* path, char* res_buf, size_t buf_len) {
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
+    if (ino_num >= SIZE_IBMAP) return -1;
     
     struct INode* inode = &inode_table[ino_num];
     if (inode->flag != 2) return -1; // not a link

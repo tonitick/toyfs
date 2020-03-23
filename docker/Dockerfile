@@ -12,3 +12,4 @@ WORKDIR /root
 RUN git clone https://github.com/tonitick/toyfs.git
 RUN cd toyfs && make
 
+WORKDIR /root/toyfs

@@ -8,6 +8,7 @@ int main() {
     int fd, ret;
     unsigned char* buf;
     ret = posix_memalign((void**)&buf, 512, 512);
+    printf("posix_memalign ret = %d\n", ret);
     fd = open("/dev/sdb1", O_RDONLY | O_DIRECT);
     if (fd < 0) {
         perror("open /dev/sdb1 failed\n");
@@ -18,6 +19,8 @@ int main() {
     scanf("%d", &block_idx);
     printf("read block %d\n", block_idx);
     io_read(fd, buf, block_idx);
+    ret = close(fd);
+    printf("close ret = %d\n", ret);
     buf[511] = 0;
     printf("%s\n", buf);
     free(buf);

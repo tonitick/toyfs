@@ -12,10 +12,10 @@ void display(struct CacheQueue* queue, struct Hash* hash) {
     while(traverse != NULL) {
         printf("%d ", traverse->block_id);
         traverse = traverse->queue_prev;
-    }    
-    printf("\nhash buckets id in order / reverse order:\n");
+    }
+    printf("\n"); 
     for (int i = 0; i < hash->hash_capacity; i++) {
-        printf("hash bucket %d:\n", i);
+        printf("hash bucket %d id in order / reverse order:\n", i);
         traverse = hash->buckets[i];
         while(traverse != NULL) {
             printf("%d ", traverse->block_id);
@@ -39,12 +39,19 @@ int main() {
 
     struct Hash* hash = create_hash_table(10);
 
+    get_block_cache(queue, hash, 0);
+    get_block_cache(queue, hash, 0);
     get_block_cache(queue, hash, 1);
     get_block_cache(queue, hash, 2);
     get_block_cache(queue, hash, 3);
-    get_block_cache(queue, hash, 1);
-    get_block_cache(queue, hash, 4);
-    get_block_cache(queue, hash, 5);
+    get_block_cache(queue, hash, 0);
+    get_block_cache(queue, hash, 12);
+    get_block_cache(queue, hash, 13);
+    get_block_cache(queue, hash, 3);
+    get_block_cache(queue, hash, 12);
+    get_block_cache(queue, hash, 0);
+    get_block_cache(queue, hash, 22);
+    // get_block_cache(queue, hash, 103);
 
     display(queue, hash);
 

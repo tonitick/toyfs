@@ -46,6 +46,40 @@ struct SuperBlock {
 #define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
 
+// inode data offset:
+//     0 for flag, 1 for number blocks assigned
+//     2 for used size, 3 for links count
+//     > 3 for block pointers
+#define INODE_FLAG_OFF 0
+#define INODE_NUM_BLKS_OFF 1
+#define INODE_USED_SIZE_OFF 2
+#define INODE_LINKS_COUNT_OFF 3
+#define INODE_BLK_PTR_OFF 4
+
+int set_inode_data(int ino_num, int inode_data, int data_offset) {
+    int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
+    int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
+    CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
+    if (inode_cache == NULL) return -1;
+    memcpy(inode_cache->block_ptr + inode_offset + data_offset, &inode_data, sizeof(inode_data));
+    inode_cache->dirty = true;
+
+    return 0;
+}
+
+int get_inode_flag(int ino_num, int data_offset) {
+    int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
+    int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
+    CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
+    if (inode_cache == NULL) return -1;
+    int inode_data = -1;
+    memcpy(&inode_data, inode_cache->block_ptr + inode_offset + data_offset, sizeof(inode_data));
+
+    return inode_data;
+}
+
+
+
 
 // bool inode_bitmap[SIZE_IBMAP];
 // bool data_bitmap[SIZE_DBMAP];

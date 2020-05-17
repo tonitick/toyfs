@@ -71,7 +71,7 @@ int initialize_toyfs() {
 
     int block_id = SUPERBLOCK_START_BLK;
     struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
-    if (superblock_cache == NULL) return -1;
+    if (superblock_cache == NULL) {printf("initialize_toyfs superblock_cache return NULL\n"); return -1;}
 
     // initialize superblock
     int magic_str_len = strlen(magic_string); // magic string len toyfs
@@ -85,11 +85,11 @@ int initialize_toyfs() {
     superblock_cache->dirty = true;
 
     // initialize bitmap
-    for (int i = 0; i < NUM_INODE; i++) {
+    for (int i = 0; i < NUM_BLKS_IMAP; i++) {
         int result = initialize_block(IMAP_START_BLK + i);
         if (result < 0) return result;
     }
-    for (int i = 0; i < NUM_DATA_BLKS; i++) {
+    for (int i = 0; i < NUM_BLKS_DMAP; i++) {
         int result = initialize_block(DMAP_START_BLK + i);
         if (result < 0) return result;
     }
@@ -107,6 +107,7 @@ int get_superblock() {
     magic_str_disk[magic_str_len] = 0;
     memcpy(magic_str_disk, superblock_cache->block_ptr, magic_str_len);
     if (strcmp(magic_str_disk, magic_string) == 0) {
+        printf("toyfs recognized.\n");
         memcpy(&superblock.size_ibmap, superblock_cache->block_ptr + magic_str_len, sizeof(unsigned int));
         memcpy(&superblock.size_dbmap, superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), sizeof(unsigned int));
         memcpy(&superblock.size_inode, superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), sizeof(unsigned int));
@@ -115,10 +116,10 @@ int get_superblock() {
         memcpy(&superblock.num_disk_ptrs_per_inode, superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), sizeof(unsigned int));
     }
     else {
-        printf("[TOYFS INFO] Device %s is not of ToyFS format. Formatting %s ...\n", device_path, device_path);
+        printf("device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
         int result = initialize_toyfs();
         if (result < 0) return result;
-        printf("[TOYFS INFO] Formatting done\n");
+        printf("formatting done.\n");
     }
 
     return 0;

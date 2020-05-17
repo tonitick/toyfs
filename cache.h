@@ -159,19 +159,16 @@ int enqueue(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
 // get pointer to the block data cached
 // bring the block to cache if not in cache
 struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
-    printf("[CACHE DBUG INFO] get_block_cache: block_id = %d\n", block_id);
+    // printf("[CACHE DBUG INFO] get_block_cache: block_id = %d\n", block_id);
     int hash_key = block_id % hash->hash_capacity;
     struct CacheNode* target = hash->buckets[hash_key];
     while(target != NULL) {
         if (target->block_id == block_id) break;
         target = target->hash_next;
     }
-    if (target != NULL) {
-        printf("[CACHE DBUG INFO] get_block_cache: target->block_id = %d\n", target->block_id);
-    }
     // bring the block to cache
     if (target == NULL || target->block_id != block_id) {
-        printf("[CACHE DBUG INFO] get_block_cache: bring block %d to cache\n", block_id);
+        // printf("[CACHE DBUG INFO] get_block_cache: bring block %d to cache\n", block_id);
         enqueue(queue, hash, block_id);
         return queue->front;
     }
@@ -199,7 +196,7 @@ struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, u
         return queue->front;
     }
     else {
-        printf("[CACHE ERROR] get_block_cache: block_id = %d\n", block_id);
+        // printf("[CACHE ERROR] get_block_cache: block_id = %d\n", block_id);
         return NULL;
     };
 } 

@@ -148,7 +148,25 @@ int get_inode_data(int ino_num, int data_offset) {
     return inode_data;
 }
 
+int set_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
+    int block_id = DATA_REG_START_BLK + data_reg_idx;
+    struct CacheNode* data_block_cache = get_block_cache(queue, hash, block_id);
+    if (data_block_cache == NULL) return -1;
+    memcpy(data_block_cache->block_ptr + offset, buffer, size);
 
+    data_block_cache->dirty = true;
+
+    return size;
+}
+
+int get_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
+    int block_id = DATA_REG_START_BLK + data_reg_idx;
+    struct CacheNode* data_block_cache = get_block_cache(queue, hash, block_id);
+    if (data_block_cache == NULL) return -1;
+    memcpy(buffer, data_block_cache->block_ptr + offset, size);
+
+    return size;
+}
 
 
 // bool inode_bitmap[SIZE_IBMAP];

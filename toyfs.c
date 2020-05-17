@@ -216,6 +216,7 @@ int get_new_inode() {
         if (get_imap_bit(new_inode)) {
             set_imap_bit(new_inode, 1);
             ino_num = new_inode;
+            
             return ino_num;
         }
     }
@@ -230,7 +231,12 @@ int get_new_block() {
         int new_block = (block_idx + i) % NUM_DATA_BLKS;
         if (get_dmap_bit(new_block)) {
             set_dmap_bit(new_block, 1);
+            char buffer[SIZE_BLOCK];
+            memset(buffer, 0, SIZE_BLOCK);
+            int result = set_data_block_data(new_block, buffer, SIZE_BLOCK, 0);
+            if (result < 0) return result;
             block_idx = new_block;
+            
             return block_idx;
         }
     }
@@ -550,7 +556,7 @@ int remove_dir_entry(int ino_num, const char* name) {
         offset += SIZE_DIR_ITEM;
     }
     if (offset < file_size) {
-        // write laster directory entry to offset
+        // write last directory entry to offset
         int last_entry_offset = file_size - SIZE_DIR_ITEM;
         write_(ino_num, buffer + last_entry_offset, SIZE_DIR_ITEM, offset);
         memset(buffer + last_entry_offset, 0, SIZE_DIR_ITEM);

@@ -116,7 +116,7 @@ int dequeue(struct CacheQueue* queue, struct Hash* hash) {
         if (fd < 0) return fd;
         io_write(fd, temp->block_ptr, temp->block_id);
         int result = close(fd);
-        if (result < 0) return result;  
+        if (result < 0) return result;
     }
     free(temp->block_ptr);
     free(temp);
@@ -162,7 +162,7 @@ struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, u
     // printf("[CACHE DBUG INFO] get_block_cache: block_id = %d\n", block_id);
     int hash_key = block_id % hash->hash_capacity;
     struct CacheNode* target = hash->buckets[hash_key];
-    while(target != NULL) {
+    while (target != NULL) {
         if (target->block_id == block_id) break;
         target = target->hash_next;
     }
@@ -199,4 +199,22 @@ struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, u
         // printf("[CACHE ERROR] get_block_cache: block_id = %d\n", block_id);
         return NULL;
     };
-} 
+}
+
+int write_dirty_blocks_back(struct CacheQueue* queue) {
+    struct CacheNode* cache_node = queue->front;
+    while (cache_node != NULL) {
+        if (cache_node->dirty) {
+            int fd = open(device_path, O_WRONLY | O_DIRECT);
+            if (fd < 0) return fd;
+            io_write(fd, cache_node->block_ptr, cache_node->block_id);
+            int result = close(fd);
+            if (result < 0) return result;
+            
+            cache_node->dirty = false;    
+        }
+        cache_node = cache_node->queue_next;
+    }
+
+    return 0;
+}

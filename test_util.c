@@ -184,16 +184,28 @@ static struct fuse_operations operations = {
 
 int main( int argc, char *argv[] )
 {
-    queue = create_cache_queue(4);
-    hash = create_hash_table(10);
+    queue = create_cache_queue(1000);
+    hash = create_hash_table(100);
     
+
     int result = get_superblock();
     if (result < 0) return -1;
 
 
     result = fuse_main(argc, argv, &operations, NULL);
-    signal(SIGINT, sigint_handler);
+    if (result < 0) return result;
+    // signal(SIGINT, sigint_handler);
 
-    return result;
+    printf("wirte dirty blocks back ...\n");
+    result = write_dirty_blocks_back(queue);
+    if (result < 0) return result;
+
+    printf("free cache space ...\n");
+    while(!is_queue_empty(queue)) dequeue(queue, hash);
+    free(queue);
+    free(hash->buckets);
+    free(hash);
+
+    return 0;
 }
 

@@ -13,7 +13,15 @@
 #include <errno.h>
 #include <stdbool.h>
 
+#define SIZE_DIR_ITEM (SIZE_FILENAME + 4) // size of directory item, 4 bytes for inode number
+#define SIZE_DATA_BLK_PTR 4 // size of data block pointers
 
+#define NUM_PTR_PER_BLK (SIZE_BLOCK / SIZE_DATA_BLK_PTR)
+#define NUM_FIRST_LEV_PTR_PER_INODE (NUM_DISK_PTRS_PER_INODE - 2)
+#define NUM_SECOND_LEV_PTR_PER_INODE NUM_PTR_PER_BLK
+#define NUM_THIRD_LEV_PTR_PER_INODE NUM_PTR_PER_BLK * NUM_PTR_PER_BLK
+#define NUM_FIRST_TWO_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE)
+#define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
 void sigint_handler(int sig) {
     printf("Caught signal %d\n", sig);
@@ -182,7 +190,7 @@ static struct fuse_operations operations = {
     .write		= do_write,
 };
 
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
     queue = create_cache_queue(1000);
     hash = create_hash_table(100);
@@ -191,10 +199,48 @@ int main( int argc, char *argv[] )
     int result = get_superblock();
     if (result < 0) return -1;
 
+    // checking macros
+	printf("SIZE_IBMAP = %d\n", SIZE_IBMAP);
+	printf("SIZE_DBMAP = %d\n", SIZE_DBMAP);
+	printf("SIZE_INODE = %d\n", SIZE_INODE);
+	printf("SIZE_FILENAME = %d\n", SIZE_FILENAME);
+	printf("ROOT_INUM = %d\n", ROOT_INUM);
+	printf("NUM_DISK_PTRS_PER_INODE = %d\n\n", NUM_DISK_PTRS_PER_INODE);
+	
+	printf("NUM_INODE = %d\n", NUM_INODE);
+	printf("NUM_DATA_BLKS = %d\n\n", NUM_DATA_BLKS);
+	
+	printf("NUM_BLKS_SUPERBLOCK = %d\n", NUM_BLKS_SUPERBLOCK);
+	printf("NUM_BLKS_IMAP = %d\n", NUM_BLKS_IMAP);
+	printf("NUM_BLKS_DMAP = %d\n", NUM_BLKS_DMAP);
+	printf("NUM_BLKS_INODE_TABLE = %d\n\n", NUM_BLKS_INODE_TABLE);
+
+	printf("SUPERBLOCK_START_BLK = %d\n", SUPERBLOCK_START_BLK);
+	printf("IMAP_START_BLK = %d\n", IMAP_START_BLK);
+	printf("DMAP_START_BLK = %d\n", DMAP_START_BLK);
+	printf("INODE_TABLE_START_BLK = %d\n", INODE_TABLE_START_BLK);
+	printf("DATA_REG_START_BLK = %d\n\n", DATA_REG_START_BLK);
+
+	printf("SIZE_DIR_ITEM = %d\n", SIZE_DIR_ITEM);
+	printf("SIZE_DATA_BLK_PTR = %d\n\n", SIZE_DATA_BLK_PTR);
+	
+	printf("NUM_PTR_PER_BLK = %d\n", NUM_PTR_PER_BLK);
+	printf("NUM_FIRST_LEV_PTR_PER_INODE = %d\n", NUM_FIRST_LEV_PTR_PER_INODE);
+	printf("NUM_SECOND_LEV_PTR_PER_INODE = %d\n", NUM_SECOND_LEV_PTR_PER_INODE);
+	printf("NUM_THIRD_LEV_PTR_PER_INODE = %d\n", NUM_THIRD_LEV_PTR_PER_INODE);
+	printf("NUM_FIRST_TWO_LEV_PTR_PER_INODE = %d\n", NUM_FIRST_TWO_LEV_PTR_PER_INODE);
+	printf("NUM_ALL_LEV_PTR_PER_INODE = %d\n\n", NUM_ALL_LEV_PTR_PER_INODE);
+
+	printf("INODE_FLAG_OFF = %d\n", INODE_FLAG_OFF);
+	printf("INODE_NUM_BLKS_OFF = %d\n", INODE_NUM_BLKS_OFF);
+	printf("INODE_USED_SIZE_OFF = %d\n", INODE_USED_SIZE_OFF);
+	printf("INODE_LINKS_COUNT_OFF = %d\n", INODE_LINKS_COUNT_OFF);
+	printf("INODE_BLK_PTR_OFF = %d\n\n", INODE_BLK_PTR_OFF);
+
 
     result = fuse_main(argc, argv, &operations, NULL);
     if (result < 0) return result;
-    // signal(SIGINT, sigint_handler);
+
 
     printf("wirte dirty blocks back ...\n");
     result = write_dirty_blocks_back(queue);

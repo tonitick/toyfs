@@ -4,6 +4,9 @@ Zheng Zhong
 
 Data structures and utilities for accessing toyfs
 */
+#ifndef __UTIL_H_
+#define __UTIL_H_
+
 #include "cache.h"
 #include <string.h>
 
@@ -32,6 +35,7 @@ struct SuperBlock {
 
 #define NUM_INODE (SIZE_IBMAP * 8)
 #define NUM_DATA_BLKS (SIZE_DBMAP * 8)
+
 #define NUM_BLKS_SUPERBLOCK 8 // set to 1 page = 8 blocks
 #define NUM_BLKS_IMAP (SIZE_IBMAP / SIZE_BLOCK)
 #define NUM_BLKS_DMAP (SIZE_DBMAP / SIZE_BLOCK)
@@ -42,14 +46,6 @@ struct SuperBlock {
 #define DMAP_START_BLK (IMAP_START_BLK + NUM_BLKS_IMAP)
 #define INODE_TABLE_START_BLK (DMAP_START_BLK + NUM_BLKS_DMAP)
 #define DATA_REG_START_BLK (INODE_TABLE_START_BLK + NUM_BLKS_INODE_TABLE)
-
-#define SIZE_DATA_BLK_PTR 4 // size of data block pointers
-#define NUM_PTR_PER_BLK (SIZE_BLOCK / SIZE_DATA_BLK_PTR)
-#define NUM_FIRST_LEV_PTR_PER_INODE (NUM_DISK_PTRS_PER_INODE - 2)
-#define NUM_SECOND_LEV_PTR_PER_INODE NUM_PTR_PER_BLK
-#define NUM_THIRD_LEV_PTR_PER_INODE NUM_PTR_PER_BLK * NUM_PTR_PER_BLK
-#define NUM_FIRST_TWO_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE)
-#define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
 int initialize_block(int block_id) {
     struct CacheNode* block_cache = get_block_cache(queue, hash, block_id);
@@ -242,3 +238,5 @@ int get_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
 
     return size;
 }
+
+#endif

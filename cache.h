@@ -4,6 +4,8 @@ Zheng Zhong
 
 LRU + Hash cache
 */
+#ifndef __CACHE_H_
+#define __CACHE_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -218,3 +220,5 @@ int write_dirty_blocks_back(struct CacheQueue* queue) {
 
     return 0;
 }
+
+#endif

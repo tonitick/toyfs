@@ -209,28 +209,33 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
     return -1;
 }
 
-int get_new_block() {
-    for (int i = 0; i < SIZE_DBMAP; i++) {
-        if (data_bitmap[i] == 0) {
-            data_bitmap[i] = 1;
-            memset(data_regions[i].space, 0, SIZE_PER_DATA_REGION);
-            return i;
-        }
-    }
-    
-    printf("[DBUG INFO] get_new_block: data blocks are used up\n");
-    return -ENOSPC; // no space left on device [4]
-}
-
 int get_new_inode() {
-    for (int i = 0; i < SIZE_IBMAP; i++) {
-        if (inode_bitmap[i] == 0) {
-            inode_bitmap[i] = 1;
-            return i;
+    static int ino_num = 0;
+    for (int i = 0; i < NUM_INODE; i ++) {
+        int new_inode = (ino_num + i) % NUM_INODE;
+        if (get_imap_bit(new_inode)) {
+            set_imap_bit(new_inode, 1);
+            ino_num = new_inode;
+            return ino_num;
         }
     }
     
     printf("[DBUG INFO] get_new_inode: inodes are used up\n");
+    return -ENOSPC; // no space left on device [4]
+}
+
+int get_new_block() {
+    static int block_idx = 0;
+    for (int i = 0; i < NUM_DATA_BLKS; i ++) {
+        int new_block = (block_idx + i) % NUM_DATA_BLKS;
+        if (get_dmap_bit(new_block)) {
+            set_dmap_bit(new_block, 1);
+            block_idx = new_block;
+            return block_idx;
+        }
+    }
+    
+    printf("[DBUG INFO] get_new_block: blocks are used up\n");
     return -ENOSPC; // no space left on device [4]
 }
 

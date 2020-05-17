@@ -5,8 +5,10 @@ Zheng Zhong
 Data structures and utility functions for accessing ToyFS
 */
 #include "cache.h"
+#include <stdlib.h>
+#include <string.h>
 
-#define SIZE_BLOCK 512
+#define SIZE_BLOCK 512 // 512 bytes
 
 struct SuperBlock {
     unsigned int size_ibmap;
@@ -45,6 +47,73 @@ struct SuperBlock {
 #define NUM_FIRST_TWO_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE)
 #define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
+struct CacheQueue* queue;
+struct Hash* hash;
+
+int set_imap_bit(int ino_num, int bit) {
+    int block_id = IMAP_START_BLK + ino_num / (SIZE_BLOCK * 8);
+    int byte_offset = (ino_num % (SIZE_BLOCK * 8)) / 8;
+    int bit_offset = (ino_num % (SIZE_BLOCK * 8)) % 8;
+    struct CacheNode* imap_cache = get_block_cache(queue, hash, block_id);
+    if (imap_cache == NULL) return -1;
+    char byte_mask = 1 << bit_offset;
+    char byte;
+    memcpy(&byte, imap_cache->block_ptr + byte_offset, sizeof(byte));
+    if (bit) byte = byte | byte_mask;
+    else byte = byte & (~byte_mask);
+    memcpy(imap_cache->block_ptr + byte_offset, &byte, sizeof(byte));
+
+    imap_cache->dirty = true;
+
+    return 0;
+}
+
+int get_imap_bit(int ino_num) {
+    int block_id = IMAP_START_BLK + ino_num / (SIZE_BLOCK * 8);
+    int byte_offset = (ino_num % (SIZE_BLOCK * 8)) / 8;
+    int bit_offset = (ino_num % (SIZE_BLOCK * 8)) % 8;
+    struct CacheNode* imap_cache = get_block_cache(queue, hash, block_id);
+    if (imap_cache == NULL) return -1;
+    char byte_mask = 1 << bit_offset;
+    char byte;
+    memcpy(&byte, imap_cache->block_ptr + byte_offset, sizeof(byte));
+    
+    if (byte & byte_mask != 0) return 1;
+    return 0;
+}
+
+
+int set_dmap_bit(int data_reg_idx, int bit) {
+    int block_id = DMAP_START_BLK + data_reg_idx / (SIZE_BLOCK * 8);
+    int byte_offset = (data_reg_idx % (SIZE_BLOCK * 8)) / 8;
+    int bit_offset = (data_reg_idx % (SIZE_BLOCK * 8)) % 8;
+    struct CacheNode* dmap_cache = get_block_cache(queue, hash, block_id);
+    if (dmap_cache == NULL) return -1;
+    char byte_mask = 1 << bit_offset;
+    char byte;
+    memcpy(&byte, dmap_cache->block_ptr + byte_offset, sizeof(byte));
+    if (bit) byte = byte | byte_mask;
+    else byte = byte & (~byte_mask);
+    memcpy(dmap_cache->block_ptr + byte_offset, &byte, sizeof(byte));
+
+    dmap_cache->dirty = true;
+
+    return 0;
+}
+
+int get_dmap_bit(int data_reg_idx) {
+    int block_id = DMAP_START_BLK + data_reg_idx / (SIZE_BLOCK * 8);
+    int byte_offset = (data_reg_idx % (SIZE_BLOCK * 8)) / 8;
+    int bit_offset = (data_reg_idx % (SIZE_BLOCK * 8)) % 8;
+    struct CacheNode* dmap_cache = get_block_cache(queue, hash, block_id);
+    if (dmap_cache == NULL) return -1;
+    char byte_mask = 1 << bit_offset;
+    char byte;
+    memcpy(&byte, dmap_cache->block_ptr + byte_offset, sizeof(byte));
+    
+    if (byte & byte_mask != 0) return 1;
+    return 0;
+}
 
 // inode data offset:
 //     0 for flag, 1 for number blocks assigned
@@ -59,21 +128,22 @@ struct SuperBlock {
 int set_inode_data(int ino_num, int inode_data, int data_offset) {
     int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
     int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
-    CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
+    struct CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
     if (inode_cache == NULL) return -1;
-    memcpy(inode_cache->block_ptr + inode_offset + data_offset, &inode_data, sizeof(inode_data));
+    memcpy(inode_cache->block_ptr + inode_offset + data_offset * sizeof(inode_data), &inode_data, sizeof(inode_data));
+    
     inode_cache->dirty = true;
 
     return 0;
 }
 
-int get_inode_flag(int ino_num, int data_offset) {
+int get_inode_data(int ino_num, int data_offset) {
     int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
     int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
-    CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
+    struct CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
     if (inode_cache == NULL) return -1;
     int inode_data = -1;
-    memcpy(&inode_data, inode_cache->block_ptr + inode_offset + data_offset, sizeof(inode_data));
+    memcpy(&inode_data, inode_cache->block_ptr + inode_offset + data_offset * sizeof(inode_data), sizeof(inode_data));
 
     return inode_data;
 }

@@ -35,5 +35,9 @@ int main() {
     printf("NUM_ALL_LEV_PTR_PER_INODE = %d\n", NUM_ALL_LEV_PTR_PER_INODE);
 
 
+    get_new_inode();
+    get_new_inode();
+    get_new_inode();
+
     return 0;
 }

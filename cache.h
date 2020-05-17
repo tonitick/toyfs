@@ -108,7 +108,7 @@ int dequeue(struct CacheQueue* queue, struct Hash* hash) {
     if (temp->hash_prev != NULL) temp->hash_prev->hash_next = temp->hash_next;
     if (temp->hash_next != NULL) temp->hash_next->hash_prev = temp->hash_prev;
 
-    write back if dirty
+    // write back if dirty
     if (temp->dirty) {
         int fd = open("/dev/sdb1", O_WRONLY | O_DIRECT);
         if (fd < 0) return fd;
@@ -156,7 +156,7 @@ int enqueue(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
 
 // get pointer to the block data cached
 // bring the block to cache if not in cache
-CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
+struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
     int hash_key = block_id % hash->hash_capacity;
     struct CacheNode* target = hash->buckets[hash_key];
     while(target != NULL) {

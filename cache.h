@@ -10,7 +10,9 @@ LRU + Hash cache
 #include <stdbool.h>
 #include <fcntl.h>
 #include "my_io.h"
-  
+
+const char* device_path = "/dev/sdb1";
+
 // linked list node for buffer cache
 struct CacheNode {
     struct CacheNode* queue_prev; // prev pointer for lru queue
@@ -42,7 +44,7 @@ struct CacheNode* newCacheNode(unsigned block_id) {
     struct CacheNode* temp = (struct CacheNode*) malloc(sizeof(struct CacheNode));
     int result = posix_memalign((void**) &(temp->block_ptr), block_size, block_size);
     if (result != 0) return NULL;
-    int fd = open("/dev/sdb1", O_RDONLY | O_DIRECT);
+    int fd = open(device_path, O_RDONLY | O_DIRECT);
     if (fd < 0) return NULL;
     io_read(fd, temp->block_ptr, block_id);
     result = close(fd);
@@ -110,7 +112,7 @@ int dequeue(struct CacheQueue* queue, struct Hash* hash) {
 
     // write back if dirty
     if (temp->dirty) {
-        int fd = open("/dev/sdb1", O_WRONLY | O_DIRECT);
+        int fd = open(device_path, O_WRONLY | O_DIRECT);
         if (fd < 0) return fd;
         io_write(fd, temp->block_ptr, temp->block_id);
         int result = close(fd);
@@ -157,15 +159,19 @@ int enqueue(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
 // get pointer to the block data cached
 // bring the block to cache if not in cache
 struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, unsigned block_id) {
+    printf("[CACHE DBUG INFO] get_block_cache: block_id = %d\n", block_id);
     int hash_key = block_id % hash->hash_capacity;
     struct CacheNode* target = hash->buckets[hash_key];
     while(target != NULL) {
         if (target->block_id == block_id) break;
         target = target->hash_next;
     }
-  
+    if (target != NULL) {
+        printf("[CACHE DBUG INFO] get_block_cache: target->block_id = %d\n", target->block_id);
+    }
     // bring the block to cache
     if (target == NULL || target->block_id != block_id) {
+        printf("[CACHE DBUG INFO] get_block_cache: bring block %d to cache\n", block_id);
         enqueue(queue, hash, block_id);
         return queue->front;
     }
@@ -189,4 +195,11 @@ struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, u
 
         return queue->front;
     }
+    else if (target->block_id == block_id && target == queue->front) {
+        return queue->front;
+    }
+    else {
+        printf("[CACHE ERROR] get_block_cache: block_id = %d\n", block_id);
+        return NULL;
+    };
 } 

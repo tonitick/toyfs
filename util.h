@@ -57,70 +57,6 @@ int initialize_block(int block_id) {
     return 0;
 }
 
-int initialize_toyfs() {
-    superblock.size_ibmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
-    superblock.size_dbmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
-    superblock.size_inode = 32; // 32 bytes
-    superblock.size_filename = 12; // 12 byes
-    superblock.root_inum = 0;
-    superblock.num_disk_ptrs_per_inode = 4;
-
-    int block_id = SUPERBLOCK_START_BLK;
-    struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
-    if (superblock_cache == NULL) {printf("initialize_toyfs superblock_cache return NULL\n"); return -1;}
-
-    // initialize superblock
-    int magic_str_len = strlen(magic_string); // magic string len toyfs
-    memcpy(superblock_cache->block_ptr, magic_string, magic_str_len);
-    memcpy(superblock_cache->block_ptr + magic_str_len, &superblock.size_ibmap, sizeof(unsigned int));
-    memcpy(superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), &superblock.size_dbmap, sizeof(unsigned int));
-    memcpy(superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), &superblock.size_inode, sizeof(unsigned int));
-    memcpy(superblock_cache->block_ptr + magic_str_len + 3 * sizeof(unsigned int), &superblock.size_filename, sizeof(unsigned int));
-    memcpy(superblock_cache->block_ptr + magic_str_len + 4 * sizeof(unsigned int), &superblock.root_inum, sizeof(unsigned int));
-    memcpy(superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), &superblock.num_disk_ptrs_per_inode, sizeof(unsigned int));
-    superblock_cache->dirty = true;
-
-    // initialize bitmap
-    for (int i = 0; i < NUM_BLKS_IMAP; i++) {
-        int result = initialize_block(IMAP_START_BLK + i);
-        if (result < 0) return result;
-    }
-    for (int i = 0; i < NUM_BLKS_DMAP; i++) {
-        int result = initialize_block(DMAP_START_BLK + i);
-        if (result < 0) return result;
-    }
-
-    return 0;
-}
-
-int get_superblock() {
-    int block_id = SUPERBLOCK_START_BLK;
-    struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
-    if (superblock_cache == NULL) return -1;
-
-    int magic_str_len = strlen(magic_string); // magic string len toyfs
-    char* magic_str_disk = (char*) malloc(magic_str_len + 1);
-    magic_str_disk[magic_str_len] = 0;
-    memcpy(magic_str_disk, superblock_cache->block_ptr, magic_str_len);
-    if (strcmp(magic_str_disk, magic_string) == 0) {
-        printf("toyfs recognized.\n");
-        memcpy(&superblock.size_ibmap, superblock_cache->block_ptr + magic_str_len, sizeof(unsigned int));
-        memcpy(&superblock.size_dbmap, superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), sizeof(unsigned int));
-        memcpy(&superblock.size_inode, superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), sizeof(unsigned int));
-        memcpy(&superblock.size_filename, superblock_cache->block_ptr + magic_str_len + 3 * sizeof(unsigned int), sizeof(unsigned int));
-        memcpy(&superblock.root_inum, superblock_cache->block_ptr + magic_str_len + 4 * sizeof(unsigned int), sizeof(unsigned int));
-        memcpy(&superblock.num_disk_ptrs_per_inode, superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), sizeof(unsigned int));
-    }
-    else {
-        printf("device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
-        int result = initialize_toyfs();
-        if (result < 0) return result;
-        printf("formatting done.\n");
-    }
-
-    return 0;
-}
-
 int set_imap_bit(int ino_num, int bit) {
     int block_id = IMAP_START_BLK + ino_num / (SIZE_BLOCK * 8);
     int byte_offset = (ino_num % (SIZE_BLOCK * 8)) / 8;
@@ -219,7 +155,7 @@ int get_inode_data(int ino_num, int data_offset) {
     return inode_data;
 }
 
-int set_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
+int set_data_block_data(int data_reg_idx, const char* buffer, int size, int offset) {
     int block_id = DATA_REG_START_BLK + data_reg_idx;
     struct CacheNode* data_block_cache = get_block_cache(queue, hash, block_id);
     if (data_block_cache == NULL) return -1;
@@ -237,6 +173,83 @@ int get_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
     memcpy(buffer, data_block_cache->block_ptr + offset, size);
 
     return size;
+}
+
+int initialize_toyfs() {
+    superblock.size_ibmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
+    superblock.size_dbmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
+    superblock.size_inode = 32; // 32 bytes
+    superblock.size_filename = 12; // 12 byes
+    superblock.root_inum = 0;
+    superblock.num_disk_ptrs_per_inode = 4;
+
+    int block_id = SUPERBLOCK_START_BLK;
+    struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
+    if (superblock_cache == NULL) {printf("initialize_toyfs superblock_cache return NULL\n"); return -1;}
+
+    // initialize superblock
+    int magic_str_len = strlen(magic_string); // magic string len toyfs
+    memcpy(superblock_cache->block_ptr, magic_string, magic_str_len);
+    memcpy(superblock_cache->block_ptr + magic_str_len, &superblock.size_ibmap, sizeof(unsigned int));
+    memcpy(superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), &superblock.size_dbmap, sizeof(unsigned int));
+    memcpy(superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), &superblock.size_inode, sizeof(unsigned int));
+    memcpy(superblock_cache->block_ptr + magic_str_len + 3 * sizeof(unsigned int), &superblock.size_filename, sizeof(unsigned int));
+    memcpy(superblock_cache->block_ptr + magic_str_len + 4 * sizeof(unsigned int), &superblock.root_inum, sizeof(unsigned int));
+    memcpy(superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), &superblock.num_disk_ptrs_per_inode, sizeof(unsigned int));
+    superblock_cache->dirty = true;
+
+    // initialize bitmap
+    for (int i = 0; i < NUM_BLKS_IMAP; i++) {
+        int result = initialize_block(IMAP_START_BLK + i);
+        if (result < 0) return result;
+    }
+    for (int i = 0; i < NUM_BLKS_DMAP; i++) {
+        int result = initialize_block(DMAP_START_BLK + i);
+        if (result < 0) return result;
+    }
+
+    // initialize root directory
+    // initialize root inode
+    int result = set_imap_bit(ROOT_INUM, 1);
+    if (result < 0) return -1;
+    result = set_inode_data(ROOT_INUM, 1, INODE_FLAG_OFF); // directory
+    if (result < 0) return result;
+    result = set_inode_data(ROOT_INUM, 0, INODE_NUM_BLKS_OFF);
+    if (result < 0) return result;
+    result = set_inode_data(ROOT_INUM, 2, INODE_LINKS_COUNT_OFF);  // direcotry has another "." file pointing to itself
+    if (result < 0) return result;
+    result = set_inode_data(ROOT_INUM, 0, INODE_USED_SIZE_OFF);
+    if (result < 0) return result;
+
+    return 0;
+}
+
+int get_superblock() {
+    int block_id = SUPERBLOCK_START_BLK;
+    struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
+    if (superblock_cache == NULL) return -1;
+
+    int magic_str_len = strlen(magic_string); // magic string len toyfs
+    char* magic_str_disk = (char*) malloc(magic_str_len + 1);
+    magic_str_disk[magic_str_len] = 0;
+    memcpy(magic_str_disk, superblock_cache->block_ptr, magic_str_len);
+    if (strcmp(magic_str_disk, magic_string) == 0) {
+        printf("toyfs recognized.\n");
+        memcpy(&superblock.size_ibmap, superblock_cache->block_ptr + magic_str_len, sizeof(unsigned int));
+        memcpy(&superblock.size_dbmap, superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), sizeof(unsigned int));
+        memcpy(&superblock.size_inode, superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), sizeof(unsigned int));
+        memcpy(&superblock.size_filename, superblock_cache->block_ptr + magic_str_len + 3 * sizeof(unsigned int), sizeof(unsigned int));
+        memcpy(&superblock.root_inum, superblock_cache->block_ptr + magic_str_len + 4 * sizeof(unsigned int), sizeof(unsigned int));
+        memcpy(&superblock.num_disk_ptrs_per_inode, superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), sizeof(unsigned int));
+    }
+    else {
+        printf("device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
+        int result = initialize_toyfs();
+        if (result < 0) return result;
+        printf("formatting done.\n");
+    }
+
+    return 0;
 }
 
 #endif

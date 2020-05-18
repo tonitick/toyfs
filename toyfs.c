@@ -795,7 +795,7 @@ static int do_mkdir(const char* path, mode_t mode) {
     // parent directory info
     int links_count = get_inode_data(parent_ino_num, INODE_LINKS_COUNT_OFF);
     if (links_count < 0) return links_count;
-    result = set_inode_data(parent_ino_num, links_count, INODE_LINKS_COUNT_OFF);
+    result = set_inode_data(parent_ino_num, links_count + 1, INODE_LINKS_COUNT_OFF);
     if (result < 0) return result;
     char new_dir_entry[SIZE_DIR_ITEM];
     memset(new_dir_entry, 0, SIZE_DIR_ITEM);
@@ -1102,7 +1102,7 @@ static struct fuse_operations operations = {
 
 int main(int argc, char* argv[]) {
     queue = create_cache_queue(1000);
-    hash = create_hash_table(100);
+    hash = create_hash_table(1000);
 
     int result = get_superblock();
     if (result < 0) return -1;

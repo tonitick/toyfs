@@ -7,13 +7,16 @@ LRU + Hash cache
 #ifndef __CACHE_H_
 #define __CACHE_H_
 
+#include "my_io.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <fcntl.h>
-#include "my_io.h"
+#include <pthread.h>
 
 const char* device_path = "/dev/sdb1";
+
+pthread_mutex_t cache_lock;
 
 // linked list node for buffer cache
 struct CacheNode {
@@ -39,6 +42,9 @@ struct Hash {
     int hash_capacity; // number of hash buckets
     struct CacheNode** buckets; // buckets
 };
+
+struct CacheQueue* queue;
+struct Hash* hash;
 
 // create a new cache node
 struct CacheNode* newCacheNode(unsigned block_id) {
@@ -201,24 +207,6 @@ struct CacheNode* get_block_cache(struct CacheQueue* queue, struct Hash* hash, u
         // printf("[CACHE ERROR] get_block_cache: block_id = %d\n", block_id);
         return NULL;
     };
-}
-
-int write_dirty_blocks_back(struct CacheQueue* queue) {
-    struct CacheNode* cache_node = queue->front;
-    while (cache_node != NULL) {
-        if (cache_node->dirty) {
-            int fd = open(device_path, O_WRONLY | O_DIRECT);
-            if (fd < 0) return fd;
-            io_write(fd, cache_node->block_ptr, cache_node->block_id);
-            int result = close(fd);
-            if (result < 0) return result;
-            
-            cache_node->dirty = false;    
-        }
-        cache_node = cache_node->queue_next;
-    }
-
-    return 0;
-}
+} 
 
 #endif

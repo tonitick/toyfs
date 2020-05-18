@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #define SIZE_DIR_ITEM (SIZE_FILENAME + 4) // size of directory item, 4 bytes for inode number
 #define SIZE_DATA_BLK_PTR 4 // size of data block pointers
@@ -23,14 +24,16 @@
 #define NUM_FIRST_TWO_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE)
 #define NUM_ALL_LEV_PTR_PER_INODE (NUM_FIRST_LEV_PTR_PER_INODE + NUM_SECOND_LEV_PTR_PER_INODE + NUM_THIRD_LEV_PTR_PER_INODE)
 
-void sigint_handler(int sig) {
-    printf("Caught signal %d\n", sig);
-    printf("SIGINT caught, writing dirty cache back to device ...\n");
+pthread_t ntid;
+
+// void sigint_handler(int sig) {
+//     printf("Caught signal %d\n", sig);
+//     printf("SIGINT caught, writing dirty cache back to device ...\n");
     
-    printf("done\n");
+//     printf("done\n");
     
-    // exit(0);
-}
+//     // exit(0);
+// }
 
 char dir_list[ 256 ][ 256 ];
 int curr_dir_idx = -1;
@@ -190,8 +193,14 @@ static struct fuse_operations operations = {
     .write		= do_write,
 };
 
-int main(int argc, char *argv[])
-{
+void* thrfun(void* arg)   {  
+	while(1) {
+		sleep(5);
+		printf ("thread doing something ...\n");
+	}	
+}
+
+int main(int argc, char *argv[]) {
     queue = create_cache_queue(1000);
     hash = create_hash_table(100);
     
@@ -237,6 +246,12 @@ int main(int argc, char *argv[])
 	printf("INODE_LINKS_COUNT_OFF = %d\n", INODE_LINKS_COUNT_OFF);
 	printf("INODE_BLK_PTR_OFF = %d\n\n", INODE_BLK_PTR_OFF);
 
+
+	int error = pthread_create(&ntid, NULL, thrfun, NULL);
+
+	if(error != 0) {
+        printf("[] background thread failed to create: [%s]\n", strerror(error));
+	}
 
     result = fuse_main(argc, argv, &operations, NULL);
     if (result < 0) return result;

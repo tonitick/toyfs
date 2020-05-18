@@ -14,9 +14,6 @@ Data structures and utilities for accessing toyfs
 
 const char* magic_string = "zz_toyfs"; // magic string to identify toyfs
 
-struct CacheQueue* queue;
-struct Hash* hash;
-
 struct SuperBlock {
     unsigned int size_ibmap;
     unsigned int size_dbmap;
@@ -48,16 +45,22 @@ struct SuperBlock {
 #define DATA_REG_START_BLK (INODE_TABLE_START_BLK + NUM_BLKS_INODE_TABLE)
 
 int initialize_block(int block_id) {
+    pthread_mutex_lock(&cache_lock);
+
     struct CacheNode* block_cache = get_block_cache(queue, hash, block_id);
     if (block_cache == NULL) return -1;
     memset(block_cache->block_ptr, 0, SIZE_BLOCK);
 
     block_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     return 0;
 }
 
 int set_imap_bit(int ino_num, int bit) {
+    pthread_mutex_lock(&cache_lock);
+    
     int block_id = IMAP_START_BLK + ino_num / (SIZE_BLOCK * 8);
     int byte_offset = (ino_num % (SIZE_BLOCK * 8)) / 8;
     int bit_offset = (ino_num % (SIZE_BLOCK * 8)) % 8;
@@ -72,10 +75,14 @@ int set_imap_bit(int ino_num, int bit) {
 
     imap_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     return 0;
 }
 
 int get_imap_bit(int ino_num) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = IMAP_START_BLK + ino_num / (SIZE_BLOCK * 8);
     int byte_offset = (ino_num % (SIZE_BLOCK * 8)) / 8;
     int bit_offset = (ino_num % (SIZE_BLOCK * 8)) % 8;
@@ -85,12 +92,16 @@ int get_imap_bit(int ino_num) {
     char byte;
     memcpy(&byte, imap_cache->block_ptr + byte_offset, sizeof(byte));
     
+    pthread_mutex_unlock(&cache_lock);
+    
     if ((byte & byte_mask) != 0) return 1;
     return 0;
 }
 
 
 int set_dmap_bit(int data_reg_idx, int bit) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = DMAP_START_BLK + data_reg_idx / (SIZE_BLOCK * 8);
     int byte_offset = (data_reg_idx % (SIZE_BLOCK * 8)) / 8;
     int bit_offset = (data_reg_idx % (SIZE_BLOCK * 8)) % 8;
@@ -105,10 +116,14 @@ int set_dmap_bit(int data_reg_idx, int bit) {
 
     dmap_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     return 0;
 }
 
 int get_dmap_bit(int data_reg_idx) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = DMAP_START_BLK + data_reg_idx / (SIZE_BLOCK * 8);
     int byte_offset = (data_reg_idx % (SIZE_BLOCK * 8)) / 8;
     int bit_offset = (data_reg_idx % (SIZE_BLOCK * 8)) % 8;
@@ -118,6 +133,8 @@ int get_dmap_bit(int data_reg_idx) {
     char byte;
     memcpy(&byte, dmap_cache->block_ptr + byte_offset, sizeof(byte));
     
+    pthread_mutex_unlock(&cache_lock);
+
     if ((byte & byte_mask) != 0) return 1;
     return 0;
 }
@@ -133,6 +150,8 @@ int get_dmap_bit(int data_reg_idx) {
 #define INODE_BLK_PTR_OFF 4
 
 int set_inode_data(int ino_num, int inode_data, int data_offset) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
     int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
     struct CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
@@ -141,10 +160,14 @@ int set_inode_data(int ino_num, int inode_data, int data_offset) {
     
     inode_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     return 0;
 }
 
 int get_inode_data(int ino_num, int data_offset) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = INODE_TABLE_START_BLK + (ino_num * SIZE_INODE) / SIZE_BLOCK;
     int inode_offset = (ino_num * SIZE_INODE) % SIZE_BLOCK;
     struct CacheNode* inode_cache = get_block_cache(queue, hash, block_id);
@@ -152,10 +175,14 @@ int get_inode_data(int ino_num, int data_offset) {
     int inode_data = -1;
     memcpy(&inode_data, inode_cache->block_ptr + inode_offset + data_offset * sizeof(inode_data), sizeof(inode_data));
 
+    pthread_mutex_unlock(&cache_lock);
+
     return inode_data;
 }
 
 int set_data_block_data(int data_reg_idx, const char* buffer, int size, int offset) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = DATA_REG_START_BLK + data_reg_idx;
     struct CacheNode* data_block_cache = get_block_cache(queue, hash, block_id);
     if (data_block_cache == NULL) return -1;
@@ -163,19 +190,25 @@ int set_data_block_data(int data_reg_idx, const char* buffer, int size, int offs
 
     data_block_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     return size;
 }
 
 int get_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = DATA_REG_START_BLK + data_reg_idx;
     struct CacheNode* data_block_cache = get_block_cache(queue, hash, block_id);
     if (data_block_cache == NULL) return -1;
     memcpy(buffer, data_block_cache->block_ptr + offset, size);
 
+    pthread_mutex_unlock(&cache_lock);
+
     return size;
 }
 
-int initialize_toyfs() {
+int initialize_toyfs() {    
     superblock.size_ibmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
     superblock.size_dbmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
     superblock.size_inode = 32; // 32 bytes
@@ -183,9 +216,11 @@ int initialize_toyfs() {
     superblock.root_inum = 0;
     superblock.num_disk_ptrs_per_inode = 4;
 
+    pthread_mutex_lock(&cache_lock);
+    
     int block_id = SUPERBLOCK_START_BLK;
     struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
-    if (superblock_cache == NULL) {printf("initialize_toyfs superblock_cache return NULL\n"); return -1;}
+    if (superblock_cache == NULL) return -1;
 
     // initialize superblock
     int magic_str_len = strlen(magic_string); // magic string len toyfs
@@ -198,6 +233,8 @@ int initialize_toyfs() {
     memcpy(superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), &superblock.num_disk_ptrs_per_inode, sizeof(unsigned int));
     superblock_cache->dirty = true;
 
+    pthread_mutex_unlock(&cache_lock);
+
     // initialize bitmap
     for (int i = 0; i < NUM_BLKS_IMAP; i++) {
         int result = initialize_block(IMAP_START_BLK + i);
@@ -207,6 +244,7 @@ int initialize_toyfs() {
         int result = initialize_block(DMAP_START_BLK + i);
         if (result < 0) return result;
     }
+    pthread_mutex_unlock(&cache_lock);
 
     // initialize root directory
     // initialize root inode
@@ -225,6 +263,8 @@ int initialize_toyfs() {
 }
 
 int get_superblock() {
+    pthread_mutex_lock(&cache_lock);
+
     int block_id = SUPERBLOCK_START_BLK;
     struct CacheNode* superblock_cache = get_block_cache(queue, hash, block_id);
     if (superblock_cache == NULL) return -1;
@@ -241,13 +281,39 @@ int get_superblock() {
         memcpy(&superblock.size_filename, superblock_cache->block_ptr + magic_str_len + 3 * sizeof(unsigned int), sizeof(unsigned int));
         memcpy(&superblock.root_inum, superblock_cache->block_ptr + magic_str_len + 4 * sizeof(unsigned int), sizeof(unsigned int));
         memcpy(&superblock.num_disk_ptrs_per_inode, superblock_cache->block_ptr + magic_str_len + 5 * sizeof(unsigned int), sizeof(unsigned int));
+
+        pthread_mutex_unlock(&cache_lock);
     }
     else {
+        pthread_mutex_unlock(&cache_lock);
+
         printf("device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
         int result = initialize_toyfs();
         if (result < 0) return result;
         printf("formatting done.\n");
     }
+
+    return 0;
+}
+
+int write_dirty_blocks_back(struct CacheQueue* queue) {
+    pthread_mutex_lock(&cache_lock);
+    
+    struct CacheNode* cache_node = queue->front;
+    while (cache_node != NULL) {
+        if (cache_node->dirty) {
+            int fd = open(device_path, O_WRONLY | O_DIRECT);
+            if (fd < 0) return fd;
+            io_write(fd, cache_node->block_ptr, cache_node->block_id);
+            int result = close(fd);
+            if (result < 0) return result;
+            
+            cache_node->dirty = false;    
+        }
+        cache_node = cache_node->queue_next;
+    }
+
+    pthread_mutex_unlock(&cache_lock);
 
     return 0;
 }

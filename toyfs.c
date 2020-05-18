@@ -1100,6 +1100,16 @@ static struct fuse_operations operations = {
     .utimens = do_utimens,
 };
 
+void* back_ground_write_back_thread(void* arg)   {  
+	while(true) {
+		sleep(30); // write back every 30 seconds
+		printf ("[BACK GROUND THREAD] synchronizing dirty blocks ...\n");
+        write_dirty_blocks_back(queue);
+	}	
+}
+
+pthread_t tid;
+
 int main(int argc, char* argv[]) {
     queue = create_cache_queue(1000);
     hash = create_hash_table(1000);
@@ -1107,14 +1117,15 @@ int main(int argc, char* argv[]) {
     int result = get_superblock();
     if (result < 0) return -1;
 
+	int error = pthread_create(&tid, NULL, back_ground_write_back_thread, NULL);
+	if(error != 0) {
+        printf("[BACK GROUND THREAD] background thread failed to create: [%s]\n", strerror(error));
+	}
+
     result = fuse_main(argc, argv, &operations, NULL);
     if (result < 0) return result;
 
-    printf("wirte dirty blocks back ...\n");
-    result = write_dirty_blocks_back(queue);
-    if (result < 0) return result;
-
-    printf("free cache space ...\n");
+    printf("free cache space and write back dirty blocks ...\n");
     while(!is_queue_empty(queue)) dequeue(queue, hash);
     free(queue);
     free(hash->buckets);

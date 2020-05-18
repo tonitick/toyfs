@@ -10,6 +10,9 @@ Data structures and utilities for accessing toyfs
 #include "cache.h"
 #include <string.h>
 
+unsigned int num_read_requests_without_cache = 0;
+unsigned int num_write_requests_without_cache = 0;
+
 #define SIZE_BLOCK 512 // 512 bytes per block
 
 const char* magic_string = "zz_toyfs"; // magic string to identify toyfs
@@ -53,6 +56,7 @@ int initialize_block(int block_id) {
 
     block_cache->dirty = true;
 
+    num_write_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return 0;
@@ -75,6 +79,7 @@ int set_imap_bit(int ino_num, int bit) {
 
     imap_cache->dirty = true;
 
+    num_write_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return 0;
@@ -92,6 +97,7 @@ int get_imap_bit(int ino_num) {
     char byte;
     memcpy(&byte, imap_cache->block_ptr + byte_offset, sizeof(byte));
     
+    num_read_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
     
     if ((byte & byte_mask) != 0) return 1;
@@ -116,6 +122,7 @@ int set_dmap_bit(int data_reg_idx, int bit) {
 
     dmap_cache->dirty = true;
 
+    num_write_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return 0;
@@ -133,6 +140,7 @@ int get_dmap_bit(int data_reg_idx) {
     char byte;
     memcpy(&byte, dmap_cache->block_ptr + byte_offset, sizeof(byte));
     
+    num_read_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     if ((byte & byte_mask) != 0) return 1;
@@ -160,6 +168,7 @@ int set_inode_data(int ino_num, int inode_data, int data_offset) {
     
     inode_cache->dirty = true;
 
+    num_write_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return 0;
@@ -175,6 +184,7 @@ int get_inode_data(int ino_num, int data_offset) {
     int inode_data = -1;
     memcpy(&inode_data, inode_cache->block_ptr + inode_offset + data_offset * sizeof(inode_data), sizeof(inode_data));
 
+    num_read_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return inode_data;
@@ -190,6 +200,7 @@ int set_data_block_data(int data_reg_idx, const char* buffer, int size, int offs
 
     data_block_cache->dirty = true;
 
+    num_write_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return size;
@@ -203,6 +214,7 @@ int get_data_block_data(int data_reg_idx, char* buffer, int size, int offset) {
     if (data_block_cache == NULL) return -1;
     memcpy(buffer, data_block_cache->block_ptr + offset, size);
 
+    num_read_requests_without_cache++;
     pthread_mutex_unlock(&cache_lock);
 
     return size;

@@ -1130,4 +1130,11 @@ int main(int argc, char* argv[]) {
     free(queue);
     free(hash->buckets);
     free(hash);
+
+    printf("[SUMMARY] total disk read request = %d\n", num_read_requests);
+    printf("[SUMMARY] total disk write request = %d\n", num_write_requests);
+    printf("[SUMMARY] total disk read request without cache (theoretically) = %d\n", num_read_requests_without_cache);
+    printf("[SUMMARY] total disk write request without cache (theoretically) = %d\n", num_write_requests_without_cache);
+
+    return 0;
 }

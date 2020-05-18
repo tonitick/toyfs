@@ -26,12 +26,12 @@ struct SuperBlock {
     unsigned int num_disk_ptrs_per_inode;
 } superblock;
 
-#define SIZE_IBMAP superblock.size_ibmap
-#define SIZE_DBMAP superblock.size_dbmap
-#define SIZE_INODE superblock.size_inode
-#define SIZE_FILENAME superblock.size_filename
-#define ROOT_INUM superblock.root_inum
-#define NUM_DISK_PTRS_PER_INODE superblock.num_disk_ptrs_per_inode
+#define SIZE_IBMAP ((int)superblock.size_ibmap)
+#define SIZE_DBMAP ((int)superblock.size_dbmap)
+#define SIZE_INODE ((int)superblock.size_inode)
+#define SIZE_FILENAME ((int)superblock.size_filename)
+#define ROOT_INUM ((int)superblock.root_inum)
+#define NUM_DISK_PTRS_PER_INODE ((int)superblock.num_disk_ptrs_per_inode)
 
 #define NUM_INODE (SIZE_IBMAP * 8)
 #define NUM_DATA_BLKS (SIZE_DBMAP * 8)

@@ -250,7 +250,7 @@ int assign_block(int ino_num, int blk_idx) {
             printf("[DBUG INFO] assign_block {direct pointer block}: %d\n", first_level_data_reg_idx);
         }
         else {
-            int first_level_data_reg_idx = get_inode_data(ino_num, INODE_BLK_PTR_OFF + NUM_DISK_PTRS_PER_INODE - 2);
+            first_level_data_reg_idx = get_inode_data(ino_num, INODE_BLK_PTR_OFF + NUM_DISK_PTRS_PER_INODE - 2);
             if (first_level_data_reg_idx < 0) return first_level_data_reg_idx;
         }
 
@@ -281,7 +281,7 @@ int assign_block(int ino_num, int blk_idx) {
             printf("[DBUG INFO] assign_block {direct pointer block}: %d\n", first_level_data_reg_idx);
         }
         else {
-            int first_level_data_reg_idx = get_inode_data(ino_num, INODE_BLK_PTR_OFF + NUM_DISK_PTRS_PER_INODE - 1);
+            first_level_data_reg_idx = get_inode_data(ino_num, INODE_BLK_PTR_OFF + NUM_DISK_PTRS_PER_INODE - 1);
             if (first_level_data_reg_idx < 0) return first_level_data_reg_idx;
         }
 

@@ -63,9 +63,9 @@ int read_block(int ino_num, int blk_idx, char* buffer) {
         int second_level_data_reg_idx = -1;
         int result = get_data_block_data(first_level_data_reg_idx, (char*) &second_level_data_reg_idx, sizeof(second_level_data_reg_idx), first_level_offset * SIZE_DATA_BLK_PTR);
         if (result < 0) return result;
-        if (second_level_data_reg_idx < 0 || second_level_data_reg_idx >= NUM_DATA_BLKS) return -1;
-       
+        if (second_level_data_reg_idx < 0 || second_level_data_reg_idx >= NUM_DATA_BLKS) return -1;       
         printf("[DBUG INFO] read_block {second level}: second_level_data_reg_idx = %d\n", second_level_data_reg_idx);
+        
         result = get_data_block_data(second_level_data_reg_idx, buffer, SIZE_BLOCK, 0);
         if (result < 0) return result;
 
@@ -138,7 +138,6 @@ int write_block(int ino_num, int blk_idx, const char* buffer) {
         if (second_level_data_reg_idx < 0 || second_level_data_reg_idx >= NUM_DATA_BLKS) return -1;
         printf("[DBUG INFO] write_block {second level}: second_level_data_reg_idx = %d\n", second_level_data_reg_idx);
         
-        printf("[DBUG INFO] read_block {second level}: second_level_data_reg_idx = %d\n", second_level_data_reg_idx);
         result = set_data_block_data(second_level_data_reg_idx, buffer, SIZE_BLOCK, 0);
 
         return SIZE_BLOCK;
@@ -197,7 +196,6 @@ int get_new_inode() {
 
 int get_new_block() {
     static int block_idx = 0;
-    printf("[DBUG INFO] get_new_block: NUM_DATA_BLKS = %d\n", NUM_DATA_BLKS);
     for (int i = 0; i < NUM_DATA_BLKS; i ++) {
         int new_block = (block_idx + i) % NUM_DATA_BLKS;
         if (!get_dmap_bit(new_block)) {
@@ -307,7 +305,7 @@ int assign_block(int ino_num, int blk_idx) {
         int third_level_data_reg_idx = get_new_block();
         if (third_level_data_reg_idx < 0) return third_level_data_reg_idx;
         int result = set_data_block_data(second_level_data_reg_idx, (char*) &third_level_data_reg_idx, sizeof(third_level_data_reg_idx), second_level_offset * SIZE_DATA_BLK_PTR);
-        if (result < 0) return result;        
+        if (result < 0) return result;
         printf("[DBUG INFO] assign_block {double indirect data block}: %d\n", third_level_data_reg_idx);
         
         result = set_inode_data(ino_num, num_blocks + 1, INODE_NUM_BLKS_OFF);
@@ -367,8 +365,7 @@ int reclaim_block(int ino_num, int blk_idx) {
         // reclaim first level block
         if(blk_idx == NUM_FIRST_LEV_PTR_PER_INODE) {
             int result = set_dmap_bit(first_level_data_reg_idx, 0);
-            if (result < 0) return result;
-            
+            if (result < 0) return result;            
             printf("[DBUG INFO] reclaim_block {direct pointer block}: %d\n", first_level_data_reg_idx);
         }
         
@@ -669,7 +666,7 @@ int get_inode_number(const char* path) {
 }
 
 static int do_getattr(const char* path, struct stat* st) {
-    printf("[DIRECT CALL INFO] getattr: path = %s\n", path);
+    printf("[FUSE CALL] getattr: path = %s\n", path);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
     if (ino_num >= NUM_INODE) return -1;
@@ -706,7 +703,7 @@ static int do_getattr(const char* path, struct stat* st) {
 }
 
 static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi) {
-    printf("[DIRECT CALL INFO] readdir: path = %s\n", path);
+    printf("[FUSE CALL] readdir: path = %s\n", path);
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
@@ -739,21 +736,21 @@ static int do_readdir(const char* path, void* res_buf, fuse_fill_dir_t filler, o
 }
 
 static int do_read(const char* path, char* buffer, size_t size, off_t offset, struct fuse_file_info* fi) {
-    printf("[DIRECT CALL INFO] read: path = %s, size = %ld, offset = %ld\n", path, size, offset);
+    printf("[FUSE CALL] read: path = %s, size = %ld, offset = %ld\n", path, size, offset);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
     return read_(ino_num, buffer, size, offset);
 }
 
 static int do_write(const char* path, const char* buffer, size_t size, off_t offset, struct fuse_file_info* info) {
-    printf("[DIRECT CALL INFO] write: path = %s, size = %ld, offset = %ld\n", path, size, offset);
+    printf("[FUSE CALL] write: path = %s, size = %ld, offset = %ld\n", path, size, offset);
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
     return write_(ino_num, buffer, size, offset);
 }
 
 static int do_mkdir(const char* path, mode_t mode) {
-    printf("[DIRECT CALL INFO] mkdir: path = %s\n", path);
+    printf("[FUSE CALL] mkdir: path = %s\n", path);
 
     // get new file and parent info
     int plen = strlen(path);
@@ -809,7 +806,7 @@ static int do_mkdir(const char* path, mode_t mode) {
 }
 
 static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
-    printf("[DIRECT CALL INFO] mknod: path = %s\n", path);
+    printf("[FUSE CALL] mknod: path = %s\n", path);
 
     // get new file and parent info
     int plen = strlen(path);
@@ -861,7 +858,7 @@ static int do_mknod(const char* path, mode_t mode, dev_t rdev) {
 }
 
 static int do_unlink(const char* path) {
-    printf("[DIRECT CALL INFO] unlink: path = %s\n", path);
+    printf("[FUSE CALL] unlink: path = %s\n", path);
 
     // get delete file and parent info
     int plen = strlen(path);
@@ -913,7 +910,7 @@ static int do_unlink(const char* path) {
 }
 
 static int do_rmdir(const char* path) {
-    printf("[DIRECT CALL INFO] rmdir: path = %s\n", path);
+    printf("[FUSE CALL] rmdir: path = %s\n", path);
 
     // get delete file and parent info
     int plen = strlen(path);
@@ -957,7 +954,7 @@ static int do_rmdir(const char* path) {
 }
 
 static int do_link(const char* target_path, const char* path) {
-    printf("[DIRECT CALL INFO] link: target_path = %s, path = %s\n", target_path, path);
+    printf("[FUSE CALL] link: target_path = %s, path = %s\n", target_path, path);
 
     // target file info
     int target_ino_num = get_inode_number(target_path);
@@ -1010,7 +1007,7 @@ static int do_link(const char* target_path, const char* path) {
 }
 
 static int do_symlink(const char* target_path, const char* path) {
-    printf("[DIRECT CALL INFO] symlink: target_path = %s, path = %s\n", target_path, path);
+    printf("[FUSE CALL] symlink: target_path = %s, path = %s\n", target_path, path);
 
     // get new file and parent info
     int plen = strlen(path);
@@ -1063,7 +1060,7 @@ static int do_symlink(const char* target_path, const char* path) {
 }
 
 static int do_readlink(const char* path, char* res_buf, size_t buf_len) {
-    printf("[DIRECT CALL INFO] readlink: path = %s, buf_len = %lu\n", path, buf_len);
+    printf("[FUSE CALL] readlink: path = %s, buf_len = %lu\n", path, buf_len);
 
     int ino_num = get_inode_number(path);
     if (ino_num < 0) return ino_num;
@@ -1105,14 +1102,15 @@ void* back_ground_write_back_thread(void* arg)   {
 		sleep(30); // write back every 30 seconds
 		printf ("[BACK GROUND THREAD] synchronizing dirty blocks ...\n");
         write_dirty_blocks_back(queue);
+        printf ("[BACK GROUND THREAD] synchronization done\n");
 	}	
 }
 
 pthread_t tid;
 
 int main(int argc, char* argv[]) {
-    queue = create_cache_queue(1000);
-    hash = create_hash_table(1000);
+    queue = create_cache_queue(83568); // 10446 pages = 83568 blocks = 42786816 bytes
+    hash = create_hash_table(100); // ensure conflics count in one hash bucket is less than 83568 / 4
 
     int result = get_superblock();
     if (result < 0) return -1;
@@ -1125,7 +1123,7 @@ int main(int argc, char* argv[]) {
     result = fuse_main(argc, argv, &operations, NULL);
     if (result < 0) return result;
 
-    printf("free cache space and write back dirty blocks ...\n");
+    printf("[SIGINT HANDLE] free cache space and write back dirty blocks ...\n");
     while(!is_queue_empty(queue)) dequeue(queue, hash);
     free(queue);
     free(hash->buckets);

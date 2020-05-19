@@ -14,8 +14,6 @@ LRU + Hash cache
 #include <fcntl.h>
 #include <pthread.h>
 
-const char* device_path = "/dev/sdb1";
-
 pthread_mutex_t cache_lock;
 
 // linked list node for buffer cache

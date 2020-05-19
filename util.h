@@ -286,7 +286,7 @@ int get_superblock() {
     magic_str_disk[magic_str_len] = 0;
     memcpy(magic_str_disk, superblock_cache->block_ptr, magic_str_len);
     if (strcmp(magic_str_disk, magic_string) == 0) {
-        printf("toyfs recognized.\n");
+        printf("[TOYFS] toyfs recognized\n");
         memcpy(&superblock.size_ibmap, superblock_cache->block_ptr + magic_str_len, sizeof(unsigned int));
         memcpy(&superblock.size_dbmap, superblock_cache->block_ptr + magic_str_len + sizeof(unsigned int), sizeof(unsigned int));
         memcpy(&superblock.size_inode, superblock_cache->block_ptr + magic_str_len + 2 * sizeof(unsigned int), sizeof(unsigned int));
@@ -299,10 +299,10 @@ int get_superblock() {
     else {
         pthread_mutex_unlock(&cache_lock);
 
-        printf("device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
+        printf("[TOYFS] device %s is not of toyfs format. formatting %s ...\n", device_path, device_path);
         int result = initialize_toyfs();
         if (result < 0) return result;
-        printf("formatting done.\n");
+        printf("[TOYFS] formatting done\n");
     }
 
     return 0;

@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+const char* device_path = "/dev/sdb1";
+
 unsigned int num_read_requests = 0;
 unsigned int num_write_requests = 0;
 size_t block_size = 512; // block size in bytes

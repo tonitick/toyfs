@@ -1,35 +1,31 @@
-# ToyFS (In memory version)
+# ToyFS
 
 This is a course project of [CUHK CSCI5550 (Spring 2020)](http://www.cse.cuhk.edu.hk/~mcyang/csci5550/2020S/csci5550.html).
 
-ToyFS manages the basic structures of a Unix File System (superblock, inode-bitmap, datablock-bitmap, inodes and datablocks) inside the memory.
+ToyFS manages the basic structures of a Unix File System (superblock, inode-bitmap, datablock-bitmap, inodes and datablocks) in block devices (e.g., a USB drive). ToyFS uses Linux direct I/O to bypass the page cache in Linux kernel, and maintains a block cache in user space.
 
 ## Dependencies
 
-ToyFS is based on [FUSE](https://libfuse.github.io/). See `docker/Dockerfile` for details.
+ToyFS is based on [FUSE](https://libfuse.github.io/). Install dependencies by `$ apt install fuse libfuse-dev`
 
-## Macros
+## Superblock Settings
 
-1. SIZE_IBMAP: number of inode, default 32
-2. SIZE_DBMAP: number of data blocks, default 512
-3. SIZE_PER_DATA_REGION: size of data block in bytes, default 64
-4. SIZE_FILENAME: size of filename, default 12
-5. ROOT_INUM: root directory inode number, default 0
-6. NUM_DISK_PTRS_PER_INODE: number of data block pointers per inode, default 4
+1. superblock.size_ibmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
+2. superblock.size_dbmap = 196608; // 4 pages = 384 blocks = 196608 bytes = 1572864 bits
+3. superblock.size_inode = 32; // 32 bytes
+4. superblock.size_filename = 12; // size of filename
+5. superblock.root_inum = 0; // root directory inode number
+6. superblock.num_disk_ptrs_per_inode = 4; // number of data block pointers per inode
 
 ## Run
 
-1. `$ cd /path/to/toyfs`
-2. `$ make`
+1. Hard code block device file path to my_io.h, e.g., `const char* device_path = "/dev/sdb1";`
+2. Plug in block device and change the mode of block device file to 777, e.g., `$ sudo chmod 777 /dev/sdb1`
+3. `$ cd /path/to/toyfs`
+4. `$ make`
 3. Create a directory for mounting toyfs, e.g.: `$ mkdir mnt`
 4. Mount toyfs on the mounting point, e.g.: `$ ./toyfs -f mnt`
 5. Create another shell and cd to toyfs mounting point, e.g.: `$ cd /path/to/toyfs/mnt`
-
-## Use Docker Container
-
-1. `$ cd /path/to/toyfs/docker`
-2. `$ docker build -t toyfs-image:toyfs --no-cache -f Dockerfile .`
-3. `$ docker run -it --privileged --device /dev/fuse --name toyfs toyfs-image:toyfs /bin/bash`
 
 ## Functions
 
